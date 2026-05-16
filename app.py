@@ -1,245 +1,398 @@
-import pickle
-import numpy as np
-import pandas as pd
-import streamlit as st
-import shap
-import plotly.graph_objects as go
+"""
+Streamlit UI for the Medical Diagnostics Multi-Agent System.
 
-# kept the UI simple, a doctor needs to read this fast
+Run: streamlit run app.py
+Requires: ANTHROPIC_API_KEY environment variable set.
+
+Design notes:
+- st.status() blocks give real "thinking" feedback while agents run.
+  Without this the UI just freezes for 30+ seconds which feels broken.
+- Patient form is intentionally simple — the symptom description free text
+  is where most of the interesting signal comes from anyway.
+- Results are streamed section-by-section as each agent finishes.
+"""
+
+from __future__ import annotations
+
+import os
+import time
+import uuid
+from typing import Optional
+
+import streamlit as st
+
+# ── Page config must be first Streamlit call ──────────────────────────────────
 st.set_page_config(
-    page_title="Cervical Cancer Risk Estimator",
-    page_icon="🔬",
+    page_title="Medical Diagnostics Agent",
+    page_icon="🏥",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
 
-# ── Load model ────────────────────────────────────────────────────────────────
+# ── API key check ─────────────────────────────────────────────────────────────
+if not os.getenv("ANTHROPIC_API_KEY"):
+    st.error(
+        "**ANTHROPIC_API_KEY not set.**\n\n"
+        "Set it in your environment before running:\n"
+        "```\nexport ANTHROPIC_API_KEY=sk-ant-...\nstreamlit run app.py\n```"
+    )
+    st.stop()
 
-@st.cache_resource
-def load_model():
-    with open("models/xgboost_model.pkl", "rb") as f:
-        return pickle.load(f)
-
-@st.cache_resource
-def load_explainer(model):
-    # TreeExplainer is deterministic so caching it is safe
-    return shap.TreeExplainer(model)
-
-try:
-    model = load_model()
-    explainer = load_explainer(model)
-    model_loaded = True
-except FileNotFoundError:
-    model_loaded = False
-
-# ── Feature definitions ───────────────────────────────────────────────────────
-
-# keeping the exact column names the model was trained on
-FEATURE_NAMES = [
-    "Age",
-    "Number of sexual partners",
-    "First sexual intercourse",
-    "Num of pregnancies",
-    "Smokes",
-    "Smokes (years)",
-    "Smokes (packs/year)",
-    "Hormonal Contraceptives",
-    "Hormonal Contraceptives (years)",
-    "IUD",
-    "IUD (years)",
-    "STDs",
-    "STDs (number)",
-    "STDs:condylomatosis",
-    "STDs:cervical condylomatosis",
-    "STDs:vaginal condylomatosis",
-    "STDs:vulvo-perineal condylomatosis",
-    "STDs:syphilis",
-    "STDs:pelvic inflammatory disease",
-    "STDs:genital herpes",
-    "STDs:molluscum contagiosum",
-    "STDs:AIDS",
-    "STDs:HIV",
-    "STDs:Hepatitis B",
-    "STDs:HPV",
-    "STDs: Number of diagnosis",
-    "Dx:Cancer",
-    "Dx:CIN",
-    "Dx:HPV",
-    "Dx",
+# ── Common symptoms for multi-select ─────────────────────────────────────────
+SYMPTOM_LIST = [
+    "Chest pain", "Shortness of breath", "Palpitations",
+    "Headache", "Dizziness", "Fainting / near-fainting",
+    "Fever", "Chills", "Night sweats", "Fatigue",
+    "Nausea", "Vomiting", "Diarrhea", "Abdominal pain", "Loss of appetite",
+    "Cough", "Wheezing", "Sore throat", "Runny nose",
+    "Back pain", "Joint pain", "Muscle aches",
+    "Rash / skin changes", "Swelling (legs/ankles)", "Swelling (face/throat)",
+    "Frequent urination", "Painful urination", "Blood in urine",
+    "Vision changes", "Hearing changes", "Numbness / tingling",
+    "Arm or leg weakness", "Difficulty speaking", "Confusion",
+    "Anxiety / mood changes", "Sleep problems", "Weight changes",
 ]
 
-# ── Sidebar inputs ────────────────────────────────────────────────────────────
+MEDICAL_CONDITIONS = [
+    "Hypertension", "Type 2 Diabetes", "Type 1 Diabetes",
+    "Heart disease / CAD", "Heart failure", "Atrial fibrillation",
+    "COPD", "Asthma", "Sleep apnea",
+    "Hypothyroidism", "Hyperthyroidism",
+    "Kidney disease (CKD)", "Liver disease",
+    "Stroke / TIA (prior)", "Epilepsy",
+    "Depression", "Anxiety disorder",
+    "Rheumatoid arthritis", "Lupus", "Fibromyalgia",
+    "Cancer (specify in description)", "HIV/AIDS",
+    "Osteoporosis", "Anemia",
+]
 
-st.sidebar.header("Patient Information")
-st.sidebar.markdown("Fill in the details below and click **Predict Risk**.")
-
-age = st.sidebar.slider("Age", min_value=13, max_value=84, value=30)
-num_partners = st.sidebar.slider("Number of sexual partners", 0, 28, 2)
-first_intercourse = st.sidebar.slider("Age at first sexual intercourse", 10, 32, 17)
-num_pregnancies = st.sidebar.slider("Number of pregnancies", 0, 11, 1)
-
-smokes = st.sidebar.selectbox("Smoker?", ["No", "Yes"])
-smokes_val = 1 if smokes == "Yes" else 0
-smokes_years = st.sidebar.slider("Smoking duration (years)", 0.0, 37.0, 0.0, step=0.5,
-                                  disabled=(smokes_val == 0))
-smokes_packs = st.sidebar.slider("Packs per year", 0.0, 37.0, 0.0, step=0.5,
-                                  disabled=(smokes_val == 0))
-
-st.sidebar.markdown("---")
-
-hc = st.sidebar.selectbox("Hormonal contraceptives?", ["No", "Yes"])
-hc_val = 1 if hc == "Yes" else 0
-hc_years = st.sidebar.slider("Hormonal contraceptive duration (years)", 0.0, 30.0, 0.0,
-                               step=0.5, disabled=(hc_val == 0))
-
-iud = st.sidebar.selectbox("IUD use?", ["No", "Yes"])
-iud_val = 1 if iud == "Yes" else 0
-iud_years = st.sidebar.slider("IUD duration (years)", 0.0, 19.0, 0.0, step=0.5,
-                                disabled=(iud_val == 0))
-
-st.sidebar.markdown("---")
-
-stds = st.sidebar.selectbox("History of STDs?", ["No", "Yes"])
-stds_val = 1 if stds == "Yes" else 0
-stds_count = st.sidebar.slider("Number of STDs", 0, 8, 0, disabled=(stds_val == 0))
-
-st.sidebar.markdown("**Specific STD history** (select all that apply)")
-std_types = {
-    "STDs:condylomatosis": st.sidebar.checkbox("Condylomatosis"),
-    "STDs:cervical condylomatosis": st.sidebar.checkbox("Cervical condylomatosis"),
-    "STDs:vaginal condylomatosis": st.sidebar.checkbox("Vaginal condylomatosis"),
-    "STDs:vulvo-perineal condylomatosis": st.sidebar.checkbox("Vulvo-perineal condylomatosis"),
-    "STDs:syphilis": st.sidebar.checkbox("Syphilis"),
-    "STDs:pelvic inflammatory disease": st.sidebar.checkbox("Pelvic inflammatory disease"),
-    "STDs:genital herpes": st.sidebar.checkbox("Genital herpes"),
-    "STDs:molluscum contagiosum": st.sidebar.checkbox("Molluscum contagiosum"),
-    "STDs:AIDS": st.sidebar.checkbox("AIDS"),
-    "STDs:HIV": st.sidebar.checkbox("HIV"),
-    "STDs:Hepatitis B": st.sidebar.checkbox("Hepatitis B"),
-    "STDs:HPV": st.sidebar.checkbox("HPV"),
-}
-stds_num_diag = st.sidebar.slider("Number of STD diagnoses", 0, 9, 0)
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("**Prior diagnoses**")
-dx_cancer = st.sidebar.checkbox("Prior cancer diagnosis")
-dx_cin = st.sidebar.checkbox("Prior CIN diagnosis")
-dx_hpv = st.sidebar.checkbox("Prior HPV diagnosis")
-dx = st.sidebar.checkbox("General Dx flag")
-
-# ── Build input vector ────────────────────────────────────────────────────────
-
-input_data = {
-    "Age": age,
-    "Number of sexual partners": num_partners,
-    "First sexual intercourse": first_intercourse,
-    "Num of pregnancies": num_pregnancies,
-    "Smokes": smokes_val,
-    "Smokes (years)": smokes_years if smokes_val else 0.0,
-    "Smokes (packs/year)": smokes_packs if smokes_val else 0.0,
-    "Hormonal Contraceptives": hc_val,
-    "Hormonal Contraceptives (years)": hc_years if hc_val else 0.0,
-    "IUD": iud_val,
-    "IUD (years)": iud_years if iud_val else 0.0,
-    "STDs": stds_val,
-    "STDs (number)": stds_count if stds_val else 0,
-    **{k: int(v) for k, v in std_types.items()},
-    "STDs: Number of diagnosis": stds_num_diag,
-    "Dx:Cancer": int(dx_cancer),
-    "Dx:CIN": int(dx_cin),
-    "Dx:HPV": int(dx_hpv),
-    "Dx": int(dx),
+SEVERITY_COLORS = {
+    "low": "#28a745",
+    "medium": "#ffc107",
+    "high": "#fd7e14",
+    "emergency": "#dc3545",
 }
 
-input_df = pd.DataFrame([input_data])
-# reorder to match training column order
-input_df = input_df.reindex(columns=FEATURE_NAMES, fill_value=0)
+SEVERITY_ICONS = {
+    "low": "✅",
+    "medium": "⚠️",
+    "high": "🔴",
+    "emergency": "🚨",
+}
+
+
+# ── Session state initialization ──────────────────────────────────────────────
+def _init_session():
+    defaults = {
+        "results": None,
+        "patient_id": str(uuid.uuid4())[:8],
+        "run_count": 0,
+    }
+    for k, v in defaults.items():
+        if k not in st.session_state:
+            st.session_state[k] = v
+
+_init_session()
+
+
+# ── Header ────────────────────────────────────────────────────────────────────
+st.title("🏥 Medical Diagnostics Multi-Agent System")
+st.markdown(
+    """
+> **⚠️ DISCLAIMER:** This system is built for **educational and research purposes only**.
+> It does **not** constitute medical advice and must **never** be used for clinical decisions.
+> Always consult a qualified healthcare provider for diagnosis and treatment.
+
+*Powered by Claude claude-sonnet-4-6 · Built with LangGraph · [View on GitHub](https://github.com/abhivasireddy13/AI-Agents-for-Medical-Diagnostics)*
+"""
+)
+st.divider()
+
+
+# ── Sidebar: Patient Intake Form ──────────────────────────────────────────────
+with st.sidebar:
+    st.header("Patient Intake Form")
+    st.caption(f"Session ID: {st.session_state.patient_id}")
+
+    st.subheader("Demographics")
+    col_a, col_b = st.columns(2)
+    with col_a:
+        age = st.number_input("Age", min_value=1, max_value=120, value=35, step=1)
+    with col_b:
+        gender = st.selectbox("Gender", ["Male", "Female", "Non-binary", "Prefer not to say"])
+
+    st.subheader("Symptoms")
+    selected_symptoms = st.multiselect(
+        "Select symptoms (multi-select):",
+        options=SYMPTOM_LIST,
+        default=[],
+        placeholder="Choose from list...",
+    )
+
+    symptom_description = st.text_area(
+        "Describe your symptoms in detail:",
+        placeholder=(
+            "e.g., Started 2 days ago. Chest pain radiates to left arm. "
+            "Worse on exertion. Rate it 7/10. Also noticed shortness of breath."
+        ),
+        height=140,
+    )
+
+    st.subheader("Medical History")
+    selected_conditions = st.multiselect(
+        "Existing conditions:",
+        options=MEDICAL_CONDITIONS,
+        default=[],
+    )
+    extra_history = st.text_input(
+        "Other conditions (not in list):",
+        placeholder="e.g., Celiac disease, migraines...",
+    )
+    medical_history = selected_conditions + ([extra_history] if extra_history.strip() else [])
+
+    st.subheader("Medications & Allergies")
+    meds_input = st.text_area(
+        "Current medications (one per line):",
+        placeholder="e.g.,\nMetformin 500mg\nLisinopril 10mg\nAtorvastatin 20mg",
+        height=100,
+    )
+    allergies_input = st.text_input(
+        "Known allergies:",
+        placeholder="e.g., Penicillin, Sulfa, Shellfish",
+    )
+
+    medications = [m.strip() for m in meds_input.splitlines() if m.strip()]
+    allergies = [a.strip() for a in allergies_input.split(",") if a.strip()]
+
+    st.divider()
+    analyze_btn = st.button(
+        "🔍 Analyze",
+        type="primary",
+        use_container_width=True,
+        disabled=not (selected_symptoms or symptom_description.strip()),
+    )
+
+    if not (selected_symptoms or symptom_description.strip()):
+        st.caption("Add symptoms above to enable analysis.")
+
 
 # ── Main panel ────────────────────────────────────────────────────────────────
+main_col, info_col = st.columns([3, 1])
 
-st.title("Cervical Cancer Risk Estimator")
-st.markdown(
-    "> **Disclaimer:** This is an academic project, not medical advice. "
-    "Do not use this tool for clinical decisions. Always consult a qualified healthcare provider."
-)
-st.markdown("---")
-
-predict_btn = st.button("Predict Risk", type="primary", use_container_width=False)
-
-if not model_loaded:
-    st.warning(
-        "Model file not found at `models/xgboost_model.pkl`. "
-        "Run the training notebook first to generate the model."
-    )
-elif predict_btn:
-    risk_prob = model.predict_proba(input_df)[0][1]
-
-    col1, col2 = st.columns([1, 1])
-
-    # ── Gauge chart ───────────────────────────────────────────────────────────
-    with col1:
-        st.subheader("Predicted Risk Probability")
-
-        if risk_prob < 0.3:
-            gauge_color = "#2ecc71"
-            risk_label = "Low Risk"
-        elif risk_prob < 0.6:
-            gauge_color = "#f39c12"
-            risk_label = "Moderate Risk"
-        else:
-            gauge_color = "#e74c3c"
-            risk_label = "High Risk"
-
-        fig = go.Figure(go.Indicator(
-            mode="gauge+number",
-            value=round(risk_prob * 100, 1),
-            number={"suffix": "%", "font": {"size": 40}},
-            title={"text": risk_label, "font": {"size": 18}},
-            gauge={
-                "axis": {"range": [0, 100], "tickwidth": 1},
-                "bar": {"color": gauge_color},
-                "steps": [
-                    {"range": [0, 30], "color": "#d5f5e3"},
-                    {"range": [30, 60], "color": "#fdebd0"},
-                    {"range": [60, 100], "color": "#fadbd8"},
-                ],
-                "threshold": {
-                    "line": {"color": "black", "width": 3},
-                    "thickness": 0.75,
-                    "value": risk_prob * 100,
-                },
-            },
-        ))
-        fig.update_layout(height=300, margin=dict(t=30, b=10, l=20, r=20))
-        st.plotly_chart(fig, use_container_width=True)
-
-    # ── Top contributing features ─────────────────────────────────────────────
-    with col2:
-        st.subheader("Top 3 Contributing Factors")
-
-        shap_vals = explainer.shap_values(input_df)[0]
-        shap_series = pd.Series(shap_vals, index=FEATURE_NAMES)
-
-        # sort by absolute value but keep sign for direction
-        top3 = shap_series.abs().nlargest(3).index
-        top3_vals = shap_series[top3]
-
-        for feat, val in top3_vals.items():
-            direction = "increases" if val > 0 else "decreases"
-            direction_icon = "▲" if val > 0 else "▼"
-            feat_value = input_df[feat].iloc[0]
-            st.markdown(
-                f"**{direction_icon} {feat}**  \n"
-                f"Value: `{feat_value}` — {direction} risk "
-                f"(SHAP: {val:+.3f})"
-            )
-            st.markdown("---")
-
-    # ── Interpretation note ───────────────────────────────────────────────────
+with info_col:
+    st.subheader("How it works")
     st.markdown(
-        f"**Model output:** {risk_prob:.1%} probability of a positive biopsy result.  \n"
-        "SHAP values above show which inputs pushed the model's prediction up or down "
-        "relative to the average patient in the training data."
+        """
+**Agent Pipeline:**
+
+1. **Symptom Analyzer**
+   → Classifies severity, identifies red flags
+
+2. **Diagnosis Agent**
+   → Differential diagnosis with reasoning
+
+3. **Treatment Agent**
+   → Treatment plan + drug interaction check
+
+4. **Report Generator**
+   → Synthesized clinical report
+
+Each agent can search medical literature and call clinical tools before responding.
+        """
     )
 
-else:
-    st.info("Set patient parameters in the sidebar and click **Predict Risk** to see results.")
+    st.subheader("Run History")
+    if st.session_state.run_count > 0:
+        st.metric("Analyses run", st.session_state.run_count)
+    else:
+        st.caption("No analyses yet this session.")
+
+with main_col:
+
+    if analyze_btn:
+        # ── Validate inputs ───────────────────────────────────────────────────
+        if not selected_symptoms and not symptom_description.strip():
+            st.warning("Please select or describe at least one symptom.")
+            st.stop()
+
+        # ── Build initial state ───────────────────────────────────────────────
+        from agents.orchestrator import compiled_graph
+
+        patient_id = f"{st.session_state.patient_id}_{st.session_state.run_count}"
+
+        initial_state = {
+            "patient_id": patient_id,
+            "age": int(age),
+            "gender": gender.lower(),
+            "symptoms": selected_symptoms,
+            "symptom_description": symptom_description.strip(),
+            "medical_history": medical_history,
+            "current_medications": medications,
+            "allergies": allergies,
+            "symptom_analysis": None,
+            "severity_level": None,
+            "diagnosis": None,
+            "differential_diagnoses": None,
+            "treatment_plan": None,
+            "drug_interactions": None,
+            "final_report": None,
+            "messages": [],
+            "error": None,
+            "iteration_count": 0,
+        }
+
+        config = {"configurable": {"thread_id": patient_id}}
+        result_state = {}
+
+        # ── Run the agent pipeline with live status updates ───────────────────
+        st.subheader("Running Agent Pipeline")
+
+        with st.status("Starting analysis...", expanded=True) as status:
+
+            st.write("📋 **Intake complete.** Routing to Symptom Analyzer...")
+            time.sleep(0.3)
+
+            # We run the graph and collect partial results node by node
+            # using stream() so we can show progress without blocking the entire UI
+            node_outputs = {}
+
+            for chunk in compiled_graph.stream(initial_state, config=config, stream_mode="values"):
+                node_outputs.update(chunk)
+
+                if chunk.get("symptom_analysis") and "symptom_analysis" not in result_state:
+                    result_state["symptom_analysis"] = chunk["symptom_analysis"]
+                    sev = chunk.get("severity_level", "unknown")
+                    sev_icon = SEVERITY_ICONS.get(sev, "ℹ️")
+                    st.write(f"✅ **Symptom Analyzer complete.** Severity: {sev_icon} `{sev.upper()}`")
+
+                if chunk.get("diagnosis") and "diagnosis" not in result_state:
+                    result_state["diagnosis"] = chunk["diagnosis"]
+                    diffs = chunk.get("differential_diagnoses", [])
+                    st.write(f"✅ **Diagnosis Agent complete.** {len(diffs)} differential(s) identified.")
+
+                if chunk.get("treatment_plan") and "treatment_plan" not in result_state:
+                    result_state["treatment_plan"] = chunk["treatment_plan"]
+                    interactions = chunk.get("drug_interactions", "")
+                    interaction_note = " Drug interaction check run." if interactions else ""
+                    st.write(f"✅ **Treatment Agent complete.**{interaction_note}")
+
+                if chunk.get("final_report") and "final_report" not in result_state:
+                    result_state["final_report"] = chunk["final_report"]
+                    st.write("✅ **Report Generator complete.** Final report ready.")
+
+            # merge final state
+            final_result = {**initial_state, **node_outputs, **result_state}
+            st.session_state.results = final_result
+            st.session_state.run_count += 1
+
+            severity = final_result.get("severity_level", "unknown")
+            if severity == "emergency":
+                status.update(label="🚨 EMERGENCY — Immediate action required!", state="error")
+            elif severity == "high":
+                status.update(label="🔴 Analysis complete — High severity, prompt care needed", state="error")
+            else:
+                status.update(label="✅ Analysis complete", state="complete")
+
+    # ── Display results ───────────────────────────────────────────────────────
+    if st.session_state.results:
+        res = st.session_state.results
+        severity = res.get("severity_level", "unknown")
+        sev_color = SEVERITY_COLORS.get(severity, "#6c757d")
+        sev_icon = SEVERITY_ICONS.get(severity, "ℹ️")
+
+        # severity badge
+        st.markdown(
+            f"""
+<div style="background:{sev_color};color:white;padding:12px 20px;border-radius:8px;
+            font-size:1.2em;font-weight:bold;margin-bottom:16px">
+  {sev_icon} Severity Assessment: {severity.upper()}
+</div>
+""",
+            unsafe_allow_html=True,
+        )
+
+        if severity == "emergency":
+            st.error(
+                "🚨 **EMERGENCY CONDITIONS DETECTED.** "
+                "Call emergency services (911 / local emergency number) immediately. "
+                "Do not drive yourself to the hospital."
+            )
+
+        # final report
+        final_report = res.get("final_report", "")
+        if final_report:
+            st.subheader("Clinical Report")
+            st.markdown(final_report)
+
+        st.divider()
+
+        # expandable detail sections for each agent's raw output
+        with st.expander("📊 Symptom Analysis (raw)", expanded=False):
+            st.markdown(res.get("symptom_analysis", "No analysis available."))
+
+        with st.expander("🔬 Diagnosis Details (raw)", expanded=False):
+            st.markdown(res.get("diagnosis", "No diagnosis output available."))
+            diffs = res.get("differential_diagnoses", [])
+            if diffs:
+                st.markdown("**Differentials identified:**")
+                for d in diffs:
+                    st.markdown(f"- {d}")
+
+        with st.expander("💊 Treatment Plan (raw)", expanded=False):
+            st.markdown(res.get("treatment_plan", "No treatment plan available."))
+
+        with st.expander("⚠️ Drug Interaction Check", expanded=(severity in ["high", "emergency"])):
+            interactions = res.get("drug_interactions", "")
+            if interactions and "No current medications" not in interactions:
+                st.warning(interactions)
+            else:
+                st.success(interactions or "No medications provided for interaction check.")
+
+        with st.expander("🔄 Agent Message Log", expanded=False):
+            messages = res.get("messages", [])
+            if messages:
+                for msg in messages:
+                    role = msg.get("role", "unknown").replace("_", " ").title()
+                    content = msg.get("content", "")[:500]
+                    st.caption(f"**{role}:** {content}...")
+            else:
+                st.caption("No messages logged.")
+
+        st.divider()
+
+        # download button
+        report_text = final_report or "No report generated."
+        st.download_button(
+            label="📄 Download Report",
+            data=report_text,
+            file_name=f"medical_report_{patient_id}.md",
+            mime="text/markdown",
+        )
+
+        if st.button("🔄 New Analysis"):
+            st.session_state.results = None
+            st.session_state.patient_id = str(uuid.uuid4())[:8]
+            st.rerun()
+
+    elif not analyze_btn:
+        st.info(
+            "👈 Fill in the patient intake form on the left and click **Analyze** to run the full diagnostic pipeline."
+        )
+        st.markdown(
+            """
+### What this system does
+
+This project demonstrates a multi-agent AI diagnostic assistant built with **LangGraph** and **Claude claude-sonnet-4-6**.
+
+The system routes a patient intake form through four specialist agents:
+
+| Agent | Role |
+|-------|------|
+| Symptom Analyzer | Classifies severity, identifies red flags, searches medical literature |
+| Diagnosis Agent | Differential diagnosis with ICD-10 codes and clinical reasoning |
+| Treatment Agent | Evidence-based treatment plan with drug interaction checking |
+| Report Generator | Synthesized clinical report in readable format |
+
+**Technologies:** LangGraph · Anthropic Claude API · DuckDuckGo medical search · openFDA drug database · Streamlit
+            """
+        )

@@ -1,0 +1,73 @@
+model:
+  default: "claude-sonnet-4-6"
+  # opus is 5x the cost but I couldn't tell the difference for symptom analysis
+  # maybe worth it for final diagnosis? keeping it as an option
+  strong: "claude-opus-4-7"
+  fast: "claude-haiku-4-5-20251001"
+
+agents:
+  symptom_analyzer:
+    model: "claude-sonnet-4-6"
+    max_tokens: 2048
+    max_tool_iterations: 3
+    temperature: 0.2   # lower temp = more consistent clinical output
+
+  diagnosis_agent:
+    model: "claude-sonnet-4-6"
+    max_tokens: 3000
+    max_tool_iterations: 4
+    temperature: 0.3
+
+  treatment_agent:
+    model: "claude-sonnet-4-6"
+    max_tokens: 3000
+    max_tool_iterations: 5
+    temperature: 0.2
+
+  report_generator:
+    model: "claude-sonnet-4-6"
+    max_tokens: 4000
+    temperature: 0.3
+
+tools:
+  medical_search:
+    max_results: 5
+    # filtering to trusted domains keeps hallucination risk low
+    trusted_domains:
+      - "nih.gov"
+      - "mayoclinic.org"
+      - "medlineplus.gov"
+      - "webmd.com"
+      - "healthline.com"
+      - "pubmed.ncbi.nlm.nih.gov"
+      - "who.int"
+      - "cdc.gov"
+    timeout_seconds: 10
+
+  drug_checker:
+    # using openFDA — free, no API key, reasonably up to date
+    openfda_base_url: "https://api.fda.gov/drug/label.json"
+    max_drugs_per_check: 10
+
+  calculator:
+    # BMI categories per WHO classification
+    bmi_categories:
+      underweight: 18.5
+      normal: 25.0
+      overweight: 30.0
+      obese: 35.0
+      severely_obese: 40.0
+
+graph:
+  checkpointer: "memory"  # memory | sqlite | postgres
+  # sqlite would be better for production but memory is fine for demo
+  max_retries: 2
+  retry_on_error: true
+
+evaluation:
+  metrics:
+    - relevance
+    - completeness
+    - safety_flags
+    - hallucination_risk
+  output_file: "evaluation/results.json"

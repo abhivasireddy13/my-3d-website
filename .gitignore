@@ -6,7 +6,12 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 .env
+*.env
+.env.local
+secrets.yaml
+secrets.json
 *.egg-info/
 dist/
 build/
@@ -32,6 +37,7 @@ htmlcov/
 *.swp
 *.swo
 .DS_Store
+Thumbs.db
 
 # Models and large binaries — don't commit trained models to git
 *.pkl
@@ -44,11 +50,19 @@ models/
 data/
 
 # Results images are generated, not committed
-# (except sample_results.json and .gitkeep)
 results/*.png
 results/*.jpg
+
+# Patient data — potentially sensitive even in demo
+memory/patient_histories/
+
+# Evaluation results — generated, not tracked
+evaluation/results.json
+
+# LangGraph checkpoint data
+langgraph_checkpoints/
+*.sqlite
 
 # Misc
 *.log
 *.tmp
-Thumbs.db
