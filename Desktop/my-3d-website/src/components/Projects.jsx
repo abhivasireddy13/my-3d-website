@@ -273,6 +273,43 @@ export default function Projects() {
           <ProjectCard key={project.id} project={project} index={i} />
         ))}
       </div>
+
+      {/* View all CTA */}
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.6, delay: 0.2 }}
+        style={{ marginTop: '3rem', display: 'flex', justifyContent: 'center' }}
+      >
+        <a
+          href="https://github.com/abhivasireddy13"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.6rem',
+            fontFamily: 'Inter',
+            fontSize: '0.9rem',
+            fontWeight: 500,
+            color: '#FFFFFF',
+            border: '1.5px solid #FF4500',
+            borderRadius: '999px',
+            padding: '0.75rem 2rem',
+            textDecoration: 'none',
+            background: 'transparent',
+            transition: 'background 0.25s ease, box-shadow 0.25s ease',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#FF4500'; e.currentTarget.style.boxShadow = '0 0 30px rgba(255,69,0,0.3)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.boxShadow = 'none' }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.477 2 2 6.477 2 12c0 4.419 2.865 8.166 6.839 9.489.5.09.682-.218.682-.484 0-.236-.009-.866-.013-1.699-2.782.603-3.369-1.342-3.369-1.342-.454-1.154-1.11-1.461-1.11-1.461-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.088 2.91.832.091-.647.349-1.086.635-1.337-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.03-2.682-.103-.253-.447-1.27.098-2.646 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836a9.59 9.59 0 0 1 2.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.376.202 2.394.1 2.646.64.699 1.026 1.591 1.026 2.682 0 3.841-2.337 4.687-4.565 4.935.359.309.678.917.678 1.852 0 1.335-.012 2.415-.012 2.741 0 .269.18.579.688.481C19.138 20.161 22 16.416 22 12c0-5.523-4.477-10-10-10z"/>
+          </svg>
+          View All on GitHub
+        </a>
+      </motion.div>
     </section>
   )
 }
