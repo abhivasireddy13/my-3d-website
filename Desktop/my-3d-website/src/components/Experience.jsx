@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
 
-// UPDATE: fill in start/end dates for internships
 const TIMELINE = [
   {
     type: 'work',
@@ -18,7 +17,7 @@ const TIMELINE = [
       'Designed a hybrid search layer (BM25 + dense retrieval) using FAISS and ChromaDB on an internal knowledge base — improved document retrieval precision by ~30% for downstream LLM queries.',
       'Automated end-to-end report generation using LangGraph multi-agent workflows — chained data extraction, summarization, and formatting agents, cutting a 3-hour manual reporting process to under 10 minutes.',
     ],
-    accent: '#FF4500',
+    accent: '#00d4ff',
   },
   {
     type: 'work',
@@ -31,7 +30,7 @@ const TIMELINE = [
       'Built a prompt caching and batching layer over the OpenAI API — cut token usage by ~35% and lowered monthly API costs across 3 client workflows.',
       'Developed a reusable Python library for client data ingestion (CSV, Excel, JSON) with schema validation and error logging; used across 5+ projects and reduced new data source onboarding from hours to under 30 minutes.',
     ],
-    accent: '#FF6B35',
+    accent: '#7928ca',
   },
   {
     type: 'edu',
@@ -45,7 +44,7 @@ const TIMELINE = [
       'Active member of the AI Research Club and Hackathon team.',
       'Multiple national hackathon participations.',
     ],
-    accent: '#FF6B35',
+    accent: '#7928ca',
   },
 ]
 
@@ -77,14 +76,14 @@ function TimelineEntry({ item, index }) {
             height: '16px',
             borderRadius: '50%',
             background: item.accent,
-            border: `3px solid #080808`,
-            boxShadow: `0 0 20px ${item.accent}80, 0 0 40px ${item.accent}40`,
+            border: `3px solid #0a0a0f`,
+            boxShadow: `0 0 20px ${item.accent}90, 0 0 40px ${item.accent}40`,
             flexShrink: 0,
             marginLeft: '-7.5px',
             zIndex: 2,
           }}
         />
-        {/* Line below (not for last) */}
+        {/* Connecting line */}
         {index < TIMELINE.length - 1 && (
           <motion.div
             initial={{ scaleY: 0 }}
@@ -94,7 +93,7 @@ function TimelineEntry({ item, index }) {
               width: '1px',
               flex: 1,
               minHeight: '3rem',
-              background: `linear-gradient(to bottom, ${item.accent}60, transparent)`,
+              background: `linear-gradient(to bottom, ${item.accent}70, transparent)`,
               transformOrigin: 'top',
               marginTop: '4px',
             }}
@@ -105,15 +104,21 @@ function TimelineEntry({ item, index }) {
       {/* Content card */}
       <div
         style={{
-          background: '#111111',
-          border: '1px solid #1f1f1f',
+          background: '#111827',
+          border: '1px solid rgba(0,212,255,0.1)',
           borderRadius: '12px',
           padding: 'clamp(1.25rem, 2.5vw, 2rem)',
           marginBottom: index < TIMELINE.length - 1 ? '2rem' : 0,
-          transition: 'border-color 0.3s ease',
+          transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
         }}
-        onMouseEnter={e => e.currentTarget.style.borderColor = `${item.accent}40`}
-        onMouseLeave={e => e.currentTarget.style.borderColor = '#1f1f1f'}
+        onMouseEnter={e => {
+          e.currentTarget.style.borderColor = `${item.accent}50`
+          e.currentTarget.style.boxShadow = `0 0 30px ${item.accent}10`
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.borderColor = 'rgba(0,212,255,0.1)'
+          e.currentTarget.style.boxShadow = 'none'
+        }}
       >
         {/* Type badge */}
         <span style={{
@@ -132,7 +137,7 @@ function TimelineEntry({ item, index }) {
           fontFamily: 'Space Grotesk',
           fontSize: 'clamp(1.1rem, 1.8vw, 1.4rem)',
           fontWeight: 600,
-          color: '#FFFFFF',
+          color: '#e2e8f0',
           letterSpacing: '-0.02em',
           marginBottom: '0.25rem',
         }}>
@@ -144,9 +149,9 @@ function TimelineEntry({ item, index }) {
         </p>
 
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-          <span style={{ fontFamily: 'Inter', fontSize: '0.8rem', color: '#555' }}>{item.period}</span>
-          <span style={{ fontFamily: 'Inter', fontSize: '0.8rem', color: '#444' }}>·</span>
-          <span style={{ fontFamily: 'Inter', fontSize: '0.8rem', color: '#555' }}>{item.location}</span>
+          <span style={{ fontFamily: 'Inter', fontSize: '0.8rem', color: '#475569' }}>{item.period}</span>
+          <span style={{ fontFamily: 'Inter', fontSize: '0.8rem', color: '#334155' }}>·</span>
+          <span style={{ fontFamily: 'Inter', fontSize: '0.8rem', color: '#475569' }}>{item.location}</span>
         </div>
 
         <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
@@ -156,7 +161,7 @@ function TimelineEntry({ item, index }) {
               style={{ display: 'flex', gap: '0.65rem', alignItems: 'flex-start' }}
             >
               <span style={{ color: item.accent, marginTop: '0.35rem', flexShrink: 0, fontSize: '0.5rem' }}>▶</span>
-              <span style={{ fontFamily: 'Inter', fontSize: '0.875rem', color: '#888888', lineHeight: 1.65 }}>{b}</span>
+              <span style={{ fontFamily: 'Inter', fontSize: '0.875rem', color: '#94a3b8', lineHeight: 1.65 }}>{b}</span>
             </li>
           ))}
         </ul>
@@ -171,7 +176,7 @@ export default function Experience() {
       id="experience"
       style={{
         padding: 'clamp(5rem, 10vw, 9rem) clamp(1.5rem, 6vw, 7rem)',
-        background: '#0a0a0a',
+        background: '#0d1117',
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -183,7 +188,7 @@ export default function Experience() {
         right: '-100px',
         width: '450px',
         height: '450px',
-        background: 'radial-gradient(circle, rgba(255,69,0,0.05) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(0,212,255,0.04) 0%, transparent 70%)',
         pointerEvents: 'none',
       }} />
 
@@ -193,7 +198,7 @@ export default function Experience() {
         whileInView={{ opacity: 1, x: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.5 }}
-        style={{ fontFamily: 'Inter', fontSize: '0.75rem', color: '#FF4500', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '1rem' }}
+        style={{ fontFamily: 'Inter', fontSize: '0.75rem', color: '#00d4ff', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '1rem' }}
       >
         04 — Experience
       </motion.p>
@@ -203,10 +208,10 @@ export default function Experience() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        style={{ fontFamily: 'Space Grotesk', fontSize: 'clamp(2rem, 4vw, 3.5rem)', fontWeight: 700, letterSpacing: '-0.03em', color: '#FFFFFF', marginBottom: '4rem' }}
+        style={{ fontFamily: 'Space Grotesk', fontSize: 'clamp(2rem, 4vw, 3.5rem)', fontWeight: 700, letterSpacing: '-0.03em', color: '#e2e8f0', marginBottom: '4rem' }}
       >
         Where I've<br />
-        <span style={{ color: '#FF4500' }}>Been.</span>
+        <span style={{ color: '#00d4ff' }}>Been.</span>
       </motion.h2>
 
       {/* Timeline */}

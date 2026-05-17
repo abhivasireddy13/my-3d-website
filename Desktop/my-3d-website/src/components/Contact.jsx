@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Mail, Phone, ArrowRight } from 'lucide-react'
 
-// Inline SVG social icons (lucide-react doesn't ship brand icons)
 const GithubIcon = ({ size = 18, color = 'currentColor' }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={color} xmlns="http://www.w3.org/2000/svg">
     <path d="M12 2C6.477 2 2 6.477 2 12c0 4.419 2.865 8.166 6.839 9.489.5.09.682-.218.682-.484 0-.236-.009-.866-.013-1.699-2.782.603-3.369-1.342-3.369-1.342-.454-1.154-1.11-1.461-1.11-1.461-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.088 2.91.832.091-.647.349-1.086.635-1.337-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.03-2.682-.103-.253-.447-1.27.098-2.646 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836a9.59 9.59 0 0 1 2.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.376.202 2.394.1 2.646.64.699 1.026 1.591 1.026 2.682 0 3.841-2.337 4.687-4.565 4.935.359.309.678.917.678 1.852 0 1.335-.012 2.415-.012 2.741 0 .269.18.579.688.481C19.138 20.161 22 16.416 22 12c0-5.523-4.477-10-10-10z"/>
@@ -42,6 +41,30 @@ const LINKS = [
   },
 ]
 
+function FuturisticGrid() {
+  return (
+    <svg
+      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', opacity: 0.07 }}
+      xmlns="http://www.w3.org/2000/svg"
+      preserveAspectRatio="xMidYMid slice"
+    >
+      <defs>
+        <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+          <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#00d4ff" strokeWidth="0.5" />
+        </pattern>
+        <radialGradient id="fade" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="white" stopOpacity="1" />
+          <stop offset="100%" stopColor="white" stopOpacity="0" />
+        </radialGradient>
+        <mask id="gridMask">
+          <rect width="100%" height="100%" fill="url(#fade)" />
+        </mask>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#grid)" mask="url(#gridMask)" />
+    </svg>
+  )
+}
+
 function ContactLink({ Icon, label, value, href }) {
   const [hov, setHov] = useState(false)
   return (
@@ -58,11 +81,12 @@ function ContactLink({ Icon, label, value, href }) {
         alignItems: 'center',
         gap: '1.25rem',
         padding: '1.25rem 1.75rem',
-        background: hov ? '#111111' : 'transparent',
-        border: `1px solid ${hov ? 'rgba(255,69,0,0.3)' : '#1f1f1f'}`,
+        background: hov ? '#111827' : 'rgba(17,24,39,0.5)',
+        border: `1px solid ${hov ? 'rgba(0,212,255,0.4)' : 'rgba(0,212,255,0.1)'}`,
         borderRadius: '12px',
         textDecoration: 'none',
-        transition: 'background 0.25s ease, border-color 0.25s ease',
+        transition: 'background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease',
+        boxShadow: hov ? '0 0 25px rgba(0,212,255,0.08)' : 'none',
         cursor: 'pointer',
       }}
     >
@@ -70,24 +94,24 @@ function ContactLink({ Icon, label, value, href }) {
         width: '44px',
         height: '44px',
         borderRadius: '10px',
-        background: hov ? 'rgba(255,69,0,0.15)' : 'rgba(255,255,255,0.04)',
+        background: hov ? 'rgba(0,212,255,0.12)' : 'rgba(0,212,255,0.05)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         transition: 'background 0.25s ease',
         flexShrink: 0,
       }}>
-        <Icon size={18} color={hov ? '#FF4500' : '#555'} />
+        <Icon size={18} color={hov ? '#00d4ff' : '#475569'} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: 'Inter', fontSize: '0.72rem', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.2rem' }}>
+        <div style={{ fontFamily: 'Inter', fontSize: '0.72rem', color: '#475569', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.2rem' }}>
           {label}
         </div>
-        <div style={{ fontFamily: 'Inter', fontSize: '0.9rem', color: hov ? '#FFFFFF' : '#CCCCCC', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', transition: 'color 0.2s ease' }}>
+        <div style={{ fontFamily: 'Inter', fontSize: '0.9rem', color: hov ? '#e2e8f0' : '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', transition: 'color 0.2s ease' }}>
           {value}
         </div>
       </div>
-      <ArrowRight size={16} color={hov ? '#FF4500' : '#333'} style={{ flexShrink: 0, transition: 'color 0.2s ease' }} />
+      <ArrowRight size={16} color={hov ? '#00d4ff' : '#334155'} style={{ flexShrink: 0, transition: 'color 0.2s ease' }} />
     </motion.a>
   )
 }
@@ -98,12 +122,15 @@ export default function Contact() {
       id="contact"
       style={{
         padding: 'clamp(5rem, 10vw, 9rem) clamp(1.5rem, 6vw, 7rem)',
-        background: '#080808',
+        background: '#0a0a0f',
         position: 'relative',
         overflow: 'hidden',
       }}
     >
-      {/* Giant glow blob */}
+      {/* Futuristic grid background */}
+      <FuturisticGrid />
+
+      {/* Central glow */}
       <div style={{
         position: 'absolute',
         top: '50%',
@@ -111,7 +138,7 @@ export default function Contact() {
         transform: 'translate(-50%, -50%)',
         width: '700px',
         height: '700px',
-        background: 'radial-gradient(circle, rgba(255,69,0,0.07) 0%, transparent 65%)',
+        background: 'radial-gradient(circle, rgba(0,212,255,0.06) 0%, transparent 65%)',
         pointerEvents: 'none',
       }} />
 
@@ -122,7 +149,7 @@ export default function Contact() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          style={{ fontFamily: 'Inter', fontSize: '0.75rem', color: '#FF4500', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '1rem' }}
+          style={{ fontFamily: 'Inter', fontSize: '0.75rem', color: '#00d4ff', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '1rem' }}
         >
           05 — Contact
         </motion.p>
@@ -138,13 +165,13 @@ export default function Contact() {
             fontSize: 'clamp(2.5rem, 6vw, 5rem)',
             fontWeight: 700,
             letterSpacing: '-0.04em',
-            color: '#FFFFFF',
+            color: '#e2e8f0',
             lineHeight: 1,
             marginBottom: '1.25rem',
           }}
         >
           Let's Build<br />
-          <span style={{ color: '#FF4500' }}>Something.</span>
+          <span style={{ color: '#00d4ff' }}>Something.</span>
         </motion.h2>
 
         <motion.p
@@ -152,7 +179,7 @@ export default function Contact() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, delay: 0.1 }}
-          style={{ fontFamily: 'Inter', fontSize: '1rem', color: '#666', lineHeight: 1.7, marginBottom: '3.5rem' }}
+          style={{ fontFamily: 'Inter', fontSize: '1rem', color: '#64748b', lineHeight: 1.7, marginBottom: '3.5rem' }}
         >
           I'm actively looking for internship and full-time AI/ML roles. If you have an interesting problem to solve, I'd love to talk.
         </motion.p>
@@ -204,14 +231,14 @@ function SendButton({ href }) {
         fontFamily: 'Inter',
         fontWeight: 600,
         fontSize: '1rem',
-        color: '#FFFFFF',
-        background: hov ? '#FF4500' : 'rgba(255,69,0,0.12)',
-        border: '1.5px solid #FF4500',
+        color: hov ? '#0a0a0f' : '#FFFFFF',
+        background: hov ? '#00d4ff' : 'rgba(0,212,255,0.1)',
+        border: '1.5px solid #00d4ff',
         padding: '1rem 2.5rem',
         borderRadius: '999px',
         textDecoration: 'none',
         transition: 'all 0.3s ease',
-        boxShadow: hov ? '0 0 40px rgba(255,69,0,0.35)' : 'none',
+        boxShadow: hov ? '0 0 40px rgba(0,212,255,0.4)' : 'none',
       }}
     >
       <Mail size={18} />

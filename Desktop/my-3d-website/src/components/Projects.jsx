@@ -1,8 +1,7 @@
 import { useRef, useCallback, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowUpRight, ExternalLink } from 'lucide-react'
+import { ArrowUpRight, ExternalLink, Terminal } from 'lucide-react'
 
-// UPDATE project links when available
 const PROJECTS = [
   {
     id: 1,
@@ -11,7 +10,6 @@ const PROJECTS = [
     tech: ['OpenCV', 'DeepFace', 'Python', 'Flask'],
     link: 'https://github.com/abhivasireddy13',
     year: '2024',
-    accent: 'rgba(255,69,0,0.12)',
   },
   {
     id: 2,
@@ -20,7 +18,6 @@ const PROJECTS = [
     tech: ['LangChain', 'GPT-4', 'FastAPI', 'React'],
     link: 'https://github.com/abhivasireddy13/production-rag-pipeline',
     year: '2024',
-    accent: 'rgba(255,100,50,0.1)',
   },
   {
     id: 3,
@@ -29,7 +26,6 @@ const PROJECTS = [
     tech: ['YOLOv8', 'PyTorch', 'Docker', 'OpenCV'],
     link: 'https://github.com/abhivasireddy13',
     year: '2024',
-    accent: 'rgba(255,69,0,0.08)',
   },
   {
     id: 4,
@@ -38,7 +34,6 @@ const PROJECTS = [
     tech: ['PostgreSQL', 'Metabase', 'Python', 'Pandas'],
     link: 'https://github.com/abhivasireddy13/ml-monitoring-drift-detection',
     year: '2023',
-    accent: 'rgba(255,120,60,0.1)',
   },
   {
     id: 5,
@@ -47,7 +42,6 @@ const PROJECTS = [
     tech: ['ReportLab', 'Python', 'Pillow', 'PDF'],
     link: 'https://github.com/abhivasireddy13',
     year: '2023',
-    accent: 'rgba(255,69,0,0.1)',
   },
 ]
 
@@ -85,24 +79,26 @@ function ProjectCard({ project, index }) {
         onMouseLeave={onMouseLeave}
         onMouseEnter={() => setHov(true)}
         style={{
-          background: '#111111',
-          border: `1px solid ${hov ? 'rgba(255,69,0,0.35)' : '#1f1f1f'}`,
+          background: '#111827',
+          border: `1px solid ${hov ? 'rgba(0,212,255,0.45)' : 'rgba(0,212,255,0.1)'}`,
           borderRadius: '12px',
           padding: 'clamp(1.5rem, 3vw, 2.5rem)',
           transition: 'transform 0.15s ease, border-color 0.3s ease, box-shadow 0.3s ease',
-          boxShadow: hov ? `0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,69,0,0.15), inset 0 0 0 1px rgba(255,69,0,0.05)` : 'none',
+          boxShadow: hov
+            ? '0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,212,255,0.15), 0 0 40px rgba(0,212,255,0.08)'
+            : 'none',
           willChange: 'transform',
           position: 'relative',
           overflow: 'hidden',
           cursor: 'pointer',
         }}
       >
-        {/* Accent glow on hover */}
+        {/* Cyan glow on hover */}
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            background: project.accent,
+            background: 'rgba(0,212,255,0.04)',
             opacity: hov ? 1 : 0,
             transition: 'opacity 0.4s ease',
             pointerEvents: 'none',
@@ -112,20 +108,24 @@ function ProjectCard({ project, index }) {
 
         {/* Top row */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem', position: 'relative', zIndex: 1 }}>
-          <span style={{
-            fontFamily: 'Inter',
-            fontSize: '0.72rem',
-            color: '#FF4500',
-            letterSpacing: '0.15em',
-            textTransform: 'uppercase',
-          }}>
-            {project.year}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <Terminal size={14} color={hov ? '#00d4ff' : '#334155'} style={{ transition: 'color 0.2s' }} />
+            <span style={{
+              fontFamily: 'Inter',
+              fontSize: '0.72rem',
+              color: hov ? '#00d4ff' : '#475569',
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase',
+              transition: 'color 0.2s',
+            }}>
+              {project.year}
+            </span>
+          </div>
           <motion.div
             animate={{ rotate: hov ? 45 : 0, scale: hov ? 1.1 : 1 }}
             transition={{ duration: 0.25 }}
           >
-            <ArrowUpRight size={18} color={hov ? '#FF4500' : '#444'} />
+            <ArrowUpRight size={18} color={hov ? '#00d4ff' : '#334155'} />
           </motion.div>
         </div>
 
@@ -135,7 +135,7 @@ function ProjectCard({ project, index }) {
             fontFamily: 'Space Grotesk',
             fontSize: 'clamp(1.15rem, 2vw, 1.5rem)',
             fontWeight: 600,
-            color: hov ? '#FFFFFF' : '#DDDDDD',
+            color: hov ? '#FFFFFF' : '#e2e8f0',
             letterSpacing: '-0.02em',
             marginBottom: '0.875rem',
             transition: 'color 0.2s ease',
@@ -151,7 +151,7 @@ function ProjectCard({ project, index }) {
           style={{
             fontFamily: 'Inter',
             fontSize: '0.9rem',
-            color: '#666666',
+            color: '#64748b',
             lineHeight: 1.7,
             marginBottom: '1.5rem',
             position: 'relative',
@@ -169,11 +169,12 @@ function ProjectCard({ project, index }) {
               style={{
                 fontFamily: 'Inter',
                 fontSize: '0.75rem',
-                color: '#888888',
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid #2a2a2a',
+                color: hov ? '#94a3b8' : '#64748b',
+                background: hov ? 'rgba(0,212,255,0.06)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${hov ? 'rgba(0,212,255,0.2)' : '#1e293b'}`,
                 borderRadius: '6px',
                 padding: '0.25rem 0.65rem',
+                transition: 'all 0.2s ease',
               }}
             >
               {t}
@@ -193,7 +194,7 @@ function ProjectCard({ project, index }) {
             fontFamily: 'Inter',
             fontSize: '0.85rem',
             fontWeight: 500,
-            color: hov ? '#FF4500' : '#555555',
+            color: hov ? '#00d4ff' : '#475569',
             textDecoration: 'none',
             transition: 'color 0.2s ease',
             position: 'relative',
@@ -213,7 +214,7 @@ export default function Projects() {
       id="projects"
       style={{
         padding: 'clamp(5rem, 10vw, 9rem) clamp(1.5rem, 6vw, 7rem)',
-        background: '#080808',
+        background: '#0a0a0f',
         position: 'relative',
       }}
     >
@@ -224,7 +225,7 @@ export default function Projects() {
         left: 0,
         width: '400px',
         height: '400px',
-        background: 'radial-gradient(circle, rgba(255,69,0,0.06) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(0,212,255,0.05) 0%, transparent 70%)',
         pointerEvents: 'none',
       }} />
 
@@ -234,7 +235,7 @@ export default function Projects() {
         whileInView={{ opacity: 1, x: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.5 }}
-        style={{ fontFamily: 'Inter', fontSize: '0.75rem', color: '#FF4500', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '1rem' }}
+        style={{ fontFamily: 'Inter', fontSize: '0.75rem', color: '#00d4ff', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '1rem' }}
       >
         03 — Projects
       </motion.p>
@@ -245,10 +246,10 @@ export default function Projects() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-          style={{ fontFamily: 'Space Grotesk', fontSize: 'clamp(2rem, 4vw, 3.5rem)', fontWeight: 700, letterSpacing: '-0.03em', color: '#FFFFFF' }}
+          style={{ fontFamily: 'Space Grotesk', fontSize: 'clamp(2rem, 4vw, 3.5rem)', fontWeight: 700, letterSpacing: '-0.03em', color: '#e2e8f0' }}
         >
           Selected<br />
-          <span style={{ color: '#FF4500' }}>Work.</span>
+          <span style={{ color: '#00d4ff' }}>Work.</span>
         </motion.h2>
         <motion.p
           initial={{ opacity: 0 }}
@@ -261,7 +262,7 @@ export default function Projects() {
         </motion.p>
       </div>
 
-      {/* Cards grid — 2 cols on desktop, 1 on mobile */}
+      {/* Cards grid */}
       <div
         style={{
           display: 'grid',
@@ -294,15 +295,23 @@ export default function Projects() {
             fontSize: '0.9rem',
             fontWeight: 500,
             color: '#FFFFFF',
-            border: '1.5px solid #FF4500',
+            border: '1.5px solid #00d4ff',
             borderRadius: '999px',
             padding: '0.75rem 2rem',
             textDecoration: 'none',
             background: 'transparent',
-            transition: 'background 0.25s ease, box-shadow 0.25s ease',
+            transition: 'background 0.25s ease, box-shadow 0.25s ease, color 0.25s ease',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#FF4500'; e.currentTarget.style.boxShadow = '0 0 30px rgba(255,69,0,0.3)' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.boxShadow = 'none' }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = '#00d4ff'
+            e.currentTarget.style.color = '#0a0a0f'
+            e.currentTarget.style.boxShadow = '0 0 30px rgba(0,212,255,0.4)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'transparent'
+            e.currentTarget.style.color = '#FFF'
+            e.currentTarget.style.boxShadow = 'none'
+          }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2C6.477 2 2 6.477 2 12c0 4.419 2.865 8.166 6.839 9.489.5.09.682-.218.682-.484 0-.236-.009-.866-.013-1.699-2.782.603-3.369-1.342-3.369-1.342-.454-1.154-1.11-1.461-1.11-1.461-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.088 2.91.832.091-.647.349-1.086.635-1.337-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.03-2.682-.103-.253-.447-1.27.098-2.646 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836a9.59 9.59 0 0 1 2.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.376.202 2.394.1 2.646.64.699 1.026 1.591 1.026 2.682 0 3.841-2.337 4.687-4.565 4.935.359.309.678.917.678 1.852 0 1.335-.012 2.415-.012 2.741 0 .269.18.579.688.481C19.138 20.161 22 16.416 22 12c0-5.523-4.477-10-10-10z"/>

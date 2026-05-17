@@ -33,16 +33,17 @@ function SocialIcon({ Icon, href, label }) {
         width: '38px',
         height: '38px',
         borderRadius: '50%',
-        border: `1px solid ${hov ? '#FF4500' : '#2a2a2a'}`,
+        border: `1px solid ${hov ? 'rgba(0,212,255,0.5)' : 'rgba(0,212,255,0.12)'}`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: hov ? 'rgba(255,69,0,0.1)' : 'transparent',
+        background: hov ? 'rgba(0,212,255,0.1)' : 'transparent',
         transition: 'all 0.25s ease',
         textDecoration: 'none',
+        boxShadow: hov ? '0 0 15px rgba(0,212,255,0.3)' : 'none',
       }}
     >
-      <Icon size={15} color={hov ? '#FF4500' : '#555'} />
+      <Icon size={15} color={hov ? '#00d4ff' : '#475569'} />
     </a>
   )
 }
@@ -51,9 +52,9 @@ export default function Footer() {
   return (
     <footer
       style={{
-        borderTop: '1px solid #1a1a1a',
+        borderTop: '1px solid rgba(0,212,255,0.1)',
         padding: '2rem clamp(1.5rem, 6vw, 7rem)',
-        background: '#080808',
+        background: '#0a0a0f',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -63,14 +64,14 @@ export default function Footer() {
     >
       <button
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        style={{ background: 'none', border: 'none', fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: '1.1rem', color: '#FFFFFF', letterSpacing: '-0.02em' }}
+        style={{ background: 'none', border: 'none', fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: '1.1rem', color: '#e2e8f0', letterSpacing: '-0.02em', cursor: 'pointer' }}
       >
-        VAS<span style={{ color: '#FF4500' }}>.</span>
+        VAS<span style={{ color: '#00d4ff' }}>.</span>
       </button>
 
-      <p style={{ fontFamily: 'Inter', fontSize: '0.8rem', color: '#444', textAlign: 'center' }}>
+      <p style={{ fontFamily: 'Inter', fontSize: '0.8rem', color: '#334155', textAlign: 'center' }}>
         Designed & Built by{' '}
-        <span style={{ color: '#FF4500' }}>Vasireddy Abhishek Sai</span>
+        <span style={{ color: '#00d4ff' }}>Vasireddy Abhishek Sai</span>
         {' '}· 2026
       </p>
 
