@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Mail, Phone, ArrowRight } from 'lucide-react'
+import { Mail, Phone, ArrowRight, MapPin, FileText } from 'lucide-react'
 
 const GithubIcon = ({ size = 18, color = 'currentColor' }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={color} xmlns="http://www.w3.org/2000/svg">
@@ -22,6 +22,12 @@ const LINKS = [
     href: 'mailto:abhivasireddy13@gmail.com',
   },
   {
+    Icon: ({ size, color }) => <Phone size={size} color={color} />,
+    label: 'Phone',
+    value: '+91-9491886476',
+    href: 'tel:+919491886476',
+  },
+  {
     Icon: LinkedinIcon,
     label: 'LinkedIn',
     value: 'linkedin.com/in/abhishek-sai-vasireddy',
@@ -34,10 +40,10 @@ const LINKS = [
     href: 'https://github.com/abhivasireddy13',
   },
   {
-    Icon: ({ size, color }) => <Phone size={size} color={color} />,
-    label: 'Phone',
-    value: '+91-9491886476',
-    href: 'tel:+919491886476',
+    Icon: ({ size, color }) => <MapPin size={size} color={color} />,
+    label: 'Location',
+    value: 'Hyderabad, India',
+    href: 'https://maps.google.com/?q=Hyderabad,India',
   },
 ]
 
@@ -171,7 +177,7 @@ export default function Contact() {
           }}
         >
           Let's Build<br />
-          <span style={{ color: '#00d4ff' }}>Something.</span>
+          <span style={{ color: '#00d4ff' }}>Something Together.</span>
         </motion.h2>
 
         <motion.p
@@ -202,15 +208,16 @@ export default function Contact() {
           ))}
         </motion.div>
 
-        {/* CTA button */}
+        {/* CTA buttons */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, delay: 0.35 }}
-          style={{ marginTop: '2.5rem' }}
+          style={{ marginTop: '2.5rem', display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}
         >
           <SendButton href="mailto:abhivasireddy13@gmail.com" />
+          <ResumeButton href={`${import.meta.env.BASE_URL}Abhi_Vasireddy.pdf`} />
         </motion.div>
       </div>
     </section>
@@ -246,6 +253,38 @@ function SendButton({ href }) {
       <motion.span animate={{ x: hov ? 4 : 0 }} transition={{ duration: 0.2 }}>
         →
       </motion.span>
+    </a>
+  )
+}
+
+function ResumeButton({ href }) {
+  const [hov, setHov] = useState(false)
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.75rem',
+        fontFamily: 'Inter',
+        fontWeight: 600,
+        fontSize: '1rem',
+        color: hov ? '#00d4ff' : '#94a3b8',
+        background: 'transparent',
+        border: `1.5px solid ${hov ? '#00d4ff' : 'rgba(0,212,255,0.25)'}`,
+        padding: '1rem 2.5rem',
+        borderRadius: '999px',
+        textDecoration: 'none',
+        transition: 'all 0.3s ease',
+        boxShadow: hov ? '0 0 20px rgba(0,212,255,0.2)' : 'none',
+      }}
+    >
+      <FileText size={18} />
+      View Resume
     </a>
   )
 }

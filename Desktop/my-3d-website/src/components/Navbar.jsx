@@ -1,30 +1,29 @@
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X } from 'lucide-react'
 
 const NAV_LINKS = ['About', 'Skills', 'Projects', 'Experience', 'Contact']
+const ACCENT = '#00e5ff'
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 60)
+    const onScroll = () => setScrolled(window.scrollY > 20)
     window.addEventListener('scroll', onScroll)
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
   const scrollTo = (id) => {
-    const el = document.getElementById(id.toLowerCase())
-    if (el) el.scrollIntoView({ behavior: 'smooth' })
-    setMobileOpen(false)
+    document.getElementById(id.toLowerCase())?.scrollIntoView({ behavior: 'smooth' })
+    setMenuOpen(false)
   }
 
   return (
     <motion.nav
       initial={{ y: -80, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       style={{
         position: 'fixed',
         top: 0,
@@ -32,70 +31,94 @@ export default function Navbar() {
         right: 0,
         zIndex: 200,
         padding: '0 clamp(1.5rem, 5vw, 4rem)',
-        height: '70px',
+        height: '64px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        transition: 'background 0.4s ease, backdrop-filter 0.4s ease, border-color 0.4s ease',
-        background: scrolled ? 'rgba(10,10,15,0.9)' : 'transparent',
-        backdropFilter: scrolled ? 'blur(24px) saturate(180%)' : 'none',
-        borderBottom: scrolled ? '1px solid rgba(0,212,255,0.12)' : '1px solid transparent',
+        background: scrolled ? 'rgba(10,10,15,0.92)' : 'transparent',
+        backdropFilter: scrolled ? 'blur(16px)' : 'none',
+        borderBottom: scrolled ? '1px solid rgba(0,229,255,0.08)' : 'none',
+        transition: 'all 0.35s ease',
       }}
     >
-      {/* Logo */}
+      {/* AV Logo */}
       <button
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         style={{
           background: 'none',
           border: 'none',
-          color: '#FFFFFF',
-          fontFamily: 'Space Grotesk',
-          fontWeight: 700,
-          fontSize: '1.25rem',
-          letterSpacing: '-0.03em',
           cursor: 'pointer',
+          fontFamily: 'Space Grotesk',
+          fontSize: '1.35rem',
+          fontWeight: 800,
+          letterSpacing: '-0.02em',
+          color: '#fff',
+          padding: 0,
         }}
       >
-        VAS<span style={{ color: '#00d4ff' }}>.</span>
+        AV<span style={{ color: ACCENT }}>.</span>
       </button>
 
-      {/* Desktop Links */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '2.5rem',
-        }}
-        className="hidden md:flex"
-      >
+      {/* Desktop nav */}
+      <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
         {NAV_LINKS.map((link) => (
-          <NavLink key={link} onClick={() => scrollTo(link)}>
-            {link}
-          </NavLink>
+          <NavLink key={link} onClick={() => scrollTo(link)}>{link}</NavLink>
         ))}
-        <PillButton onClick={() => scrollTo('Contact')}>
-          Hire Me
-        </PillButton>
+        <a
+          href={`${import.meta.env.BASE_URL}Abhi_Vasireddy.pdf`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            fontFamily: 'Inter',
+            fontSize: '0.82rem',
+            fontWeight: 600,
+            letterSpacing: '0.06em',
+            color: '#0a0a0f',
+            background: ACCENT,
+            padding: '0.5rem 1.4rem',
+            borderRadius: '999px',
+            textDecoration: 'none',
+            transition: 'box-shadow 0.25s ease',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.boxShadow = `0 0 22px rgba(0,229,255,0.5)` }}
+          onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none' }}
+        >
+          Resume
+        </a>
       </div>
 
-      {/* Mobile toggle */}
+      {/* Mobile hamburger */}
       <button
-        className="md:hidden"
-        onClick={() => setMobileOpen((v) => !v)}
+        className="nav-hamburger"
+        onClick={() => setMenuOpen(o => !o)}
         style={{
+          display: 'none',
           background: 'none',
           border: 'none',
-          color: '#FFFFFF',
-          padding: '0.25rem',
           cursor: 'pointer',
+          padding: '0.5rem',
+          flexDirection: 'column',
+          gap: '5px',
         }}
       >
-        {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+        {[0, 1, 2].map(i => (
+          <span key={i} style={{
+            display: 'block',
+            width: '22px',
+            height: '2px',
+            background: menuOpen ? ACCENT : '#888',
+            borderRadius: '2px',
+            transition: 'all 0.2s',
+            transform: menuOpen && i === 0 ? 'rotate(45deg) translate(5px, 5px)'
+              : menuOpen && i === 2 ? 'rotate(-45deg) translate(5px, -5px)'
+              : menuOpen && i === 1 ? 'scaleX(0)' : 'none',
+          }} />
+        ))}
       </button>
 
-      {/* Mobile menu */}
+      {/* Mobile drawer */}
       <AnimatePresence>
-        {mobileOpen && (
+        {menuOpen && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -103,40 +126,54 @@ export default function Navbar() {
             transition={{ duration: 0.25 }}
             style={{
               position: 'absolute',
-              top: '70px',
+              top: '64px',
               left: 0,
               right: 0,
-              background: 'rgba(10,10,15,0.97)',
-              backdropFilter: 'blur(24px)',
-              borderBottom: '1px solid rgba(0,212,255,0.12)',
-              padding: '1.5rem clamp(1.5rem, 5vw, 4rem)',
+              background: 'rgba(10,10,15,0.98)',
+              borderBottom: `1px solid rgba(0,229,255,0.12)`,
+              padding: '1.5rem 2rem',
               display: 'flex',
               flexDirection: 'column',
               gap: '1.25rem',
             }}
           >
-            {NAV_LINKS.map((link) => (
+            {NAV_LINKS.map(link => (
               <button
                 key={link}
                 onClick={() => scrollTo(link)}
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#888888',
+                  cursor: 'pointer',
                   fontFamily: 'Inter',
                   fontSize: '1rem',
                   fontWeight: 500,
+                  color: '#ccc',
                   textAlign: 'left',
-                  cursor: 'pointer',
+                  padding: 0,
                 }}
               >
                 {link}
               </button>
             ))}
-            <PillButton onClick={() => scrollTo('Contact')}>Hire Me</PillButton>
+            <a
+              href={`${import.meta.env.BASE_URL}Abhi_Vasireddy.pdf`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: ACCENT, fontFamily: 'Inter', fontSize: '1rem', fontWeight: 600, textDecoration: 'none', width: 'fit-content' }}
+            >
+              Resume ↓
+            </a>
           </motion.div>
         )}
       </AnimatePresence>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .nav-links { display: none !important; }
+          .nav-hamburger { display: flex !important; }
+        }
+      `}</style>
     </motion.nav>
   )
 }
@@ -151,54 +188,28 @@ function NavLink({ onClick, children }) {
       style={{
         background: 'none',
         border: 'none',
-        color: hov ? '#00d4ff' : '#888888',
+        cursor: 'pointer',
         fontFamily: 'Inter',
-        fontSize: '0.875rem',
+        fontSize: '0.82rem',
         fontWeight: 500,
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+        color: hov ? ACCENT : '#888',
+        padding: '0.25rem 0',
         transition: 'color 0.2s ease',
         position: 'relative',
-        cursor: 'pointer',
       }}
     >
       {children}
-      <span
-        style={{
-          position: 'absolute',
-          bottom: '-3px',
-          left: 0,
-          width: hov ? '100%' : '0%',
-          height: '1px',
-          background: '#00d4ff',
-          transition: 'width 0.25s ease',
-        }}
-      />
-    </button>
-  )
-}
-
-function PillButton({ onClick, children }) {
-  const [hov, setHov] = useState(false)
-  return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        background: hov ? '#00d4ff' : 'transparent',
-        border: '1.5px solid #00d4ff',
-        color: hov ? '#0a0a0f' : '#00d4ff',
-        fontFamily: 'Inter',
-        fontSize: '0.875rem',
-        fontWeight: hov ? 700 : 500,
-        padding: '0.5rem 1.5rem',
-        borderRadius: '999px',
-        transition: 'all 0.25s ease',
-        whiteSpace: 'nowrap',
-        cursor: 'pointer',
-        boxShadow: hov ? '0 0 20px rgba(0,212,255,0.4)' : 'none',
-      }}
-    >
-      {children}
+      <span style={{
+        position: 'absolute',
+        bottom: '-2px',
+        left: 0,
+        width: hov ? '100%' : '0%',
+        height: '1px',
+        background: ACCENT,
+        transition: 'width 0.25s ease',
+      }} />
     </button>
   )
 }

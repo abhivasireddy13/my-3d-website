@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { FaGithub, FaLinkedinIn } from 'react-icons/fa'
+import { FaGithub, FaLinkedinIn, FaInstagram } from 'react-icons/fa'
 
 const SOCIALS = [
-  { Icon: FaGithub,     href: 'https://github.com/abhivasireddy13',                  label: 'GitHub'   },
-  { Icon: FaLinkedinIn, href: 'https://www.linkedin.com/in/abhishek-sai-vasireddy/', label: 'LinkedIn' },
+  { Icon: FaGithub,     href: 'https://github.com/abhivasireddy13',                   label: 'GitHub'    },
+  { Icon: FaLinkedinIn, href: 'https://www.linkedin.com/in/abhishek-sai-vasireddy/',  label: 'LinkedIn'  },
+  { Icon: FaInstagram,  href: 'https://www.instagram.com/abhi.vasireddy13/',          label: 'Instagram' },
 ]
 
 function SocialBtn({ Icon, href, label }) {

@@ -5,4 +5,7 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: '/my-3d-website/',
+  resolve: {
+    dedupe: ['react', 'react-dom'],
+  },
 })

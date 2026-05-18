@@ -5,43 +5,43 @@ import { ArrowUpRight, ExternalLink, Terminal } from 'lucide-react'
 const PROJECTS = [
   {
     id: 1,
-    name: 'AI Face Recognition System',
-    description: 'Real-time face detection and recognition pipeline with 98% accuracy using deep metric learning and cosine similarity matching.',
-    tech: ['OpenCV', 'DeepFace', 'Python', 'Flask'],
-    link: 'https://github.com/abhivasireddy13',
-    year: '2024',
+    name: 'Production RAG Pipeline',
+    description: 'Production-grade RAG pipeline with hybrid BM25 + dense vector search, Cohere re-ranking, streaming responses, citation tracking, and a RAGAS evaluation harness — p95 query latency under 800 ms on a 100K+ document corpus.',
+    tech: ['Python', 'LangChain', 'FAISS', 'OpenAI', 'Cohere', 'FastAPI', 'RAGAS', 'Docker'],
+    link: 'https://github.com/abhivasireddy13/production-rag-pipeline',
+    year: '2025',
   },
   {
     id: 2,
-    name: 'LLM-Powered Chatbot',
-    description: 'Production-ready conversational AI with multi-turn memory, RAG pipeline over private docs, and streaming response UI.',
-    tech: ['LangChain', 'GPT-4', 'FastAPI', 'React'],
-    link: 'https://github.com/abhivasireddy13/production-rag-pipeline',
-    year: '2024',
+    name: 'ML Monitoring & Drift Detection System',
+    description: 'Production ML observability stack monitoring 10+ models for performance degradation and feature drift — MTTD reduced from days to under 15 minutes.',
+    tech: ['Python', 'Prometheus', 'Grafana', 'MLflow', 'Evidently AI', 'Docker', 'GitHub Actions'],
+    link: 'https://github.com/abhivasireddy13/ml-monitoring-drift-detection',
+    year: '2025',
   },
   {
     id: 3,
-    name: 'Object Detection Pipeline',
-    description: 'End-to-end YOLOv8 object detection with custom dataset training, Docker deployment, and real-time video inference.',
-    tech: ['YOLOv8', 'PyTorch', 'Docker', 'OpenCV'],
-    link: 'https://github.com/abhivasireddy13',
-    year: '2024',
+    name: 'AI Agents for Medical Diagnostics',
+    description: 'Multi-agent LLM system with specialised agents for symptom intake, differential diagnosis, and triage — 91% top-3 diagnostic agreement on 200+ clinical cases.',
+    tech: ['Python', 'LangChain', 'OpenAI', 'Multi-Agent', 'Function Calling', 'Guardrails'],
+    link: 'https://github.com/abhivasireddy13/AI-Agents-for-Medical-Diagnostics',
+    year: '2025',
   },
   {
     id: 4,
-    name: 'Procurement Analytics Dashboard',
-    description: 'Interactive analytics dashboard for supply-chain procurement data with automated anomaly detection and trend forecasting.',
-    tech: ['PostgreSQL', 'Metabase', 'Python', 'Pandas'],
-    link: 'https://github.com/abhivasireddy13/ml-monitoring-drift-detection',
-    year: '2023',
+    name: 'Multimodal Document Intelligence',
+    description: 'Vision-language system combining PaddleOCR with LLaVA-style multimodal models — 70% reduction in manual review effort on a 5,000-document benchmark.',
+    tech: ['Python', 'PaddleOCR', 'LLaVA', 'ChromaDB', 'Sentence Transformers', 'FastAPI'],
+    link: 'https://github.com/abhivasireddy13/multimodal-document-intelligence',
+    year: '2025',
   },
   {
     id: 5,
-    name: 'Certificate Generator',
-    description: 'Bulk internship certificate automation system that generates personalized PDFs from templates with QR validation codes.',
-    tech: ['ReportLab', 'Python', 'Pillow', 'PDF'],
-    link: 'https://github.com/abhivasireddy13',
-    year: '2023',
+    name: 'Amazon Customer Reviews — NLP Benchmark',
+    description: 'Sentiment analysis API benchmarking VADER, TF-IDF + Logistic Regression, and DistilBERT on Amazon reviews — FastAPI backend + Streamlit frontend.',
+    tech: ['Python', 'DistilBERT', 'VADER', 'TF-IDF', 'FastAPI', 'Streamlit', 'HuggingFace'],
+    link: 'https://github.com/abhivasireddy13/Amazon-Customer-Reviews',
+    year: '2024',
   },
 ]
 
@@ -201,7 +201,7 @@ function ProjectCard({ project, index }) {
             zIndex: 1,
           }}
         >
-          View Project <ExternalLink size={14} />
+          View on GitHub <ExternalLink size={14} />
         </a>
       </div>
     </motion.div>
