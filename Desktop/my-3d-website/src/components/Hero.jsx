@@ -1,7 +1,6 @@
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Canvas } from '@react-three/fiber'
-import RobotModel from '../three/RobotModel'
+import CharacterScene from '../three/CharacterScene'
 
 const ROLES = ['AI/ML Engineer', 'LLM Engineer', 'MLOps Engineer', 'GenAI Developer']
 const ACCENT = '#00e5ff'
@@ -195,7 +194,7 @@ export default function Hero() {
         </motion.div>
       </div>
 
-      {/* Robot 3D — right side, dominant panel */}
+      {/* Character — right panel */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -205,21 +204,12 @@ export default function Hero() {
           position: 'absolute',
           right: 0,
           top: 0,
-          width: '60%',
+          width: '58%',
           height: '100%',
           zIndex: 3,
         }}
       >
-        <Canvas
-          camera={{ position: [0, 1.2, 6.5], fov: 45 }}
-          gl={{ antialias: true, alpha: true, toneMapping: 4 }}
-          shadows={false}
-          style={{ width: '100%', height: '100%' }}
-        >
-          <Suspense fallback={null}>
-            <RobotModel />
-          </Suspense>
-        </Canvas>
+        <CharacterScene mode="face" />
       </motion.div>
 
       {/* Scroll indicator */}
@@ -251,8 +241,7 @@ export default function Hero() {
 
       <style>{`
         @media (max-width: 900px) {
-          .hero-left   { flex: 0 0 100% !important; max-width: 100% !important; padding: 0 2rem !important; }
-          .hero-canvas { display: none !important; }
+          .hero-left { flex: 0 0 100% !important; max-width: 100% !important; padding: 0 2rem !important; }
         }
       `}</style>
     </section>

@@ -28,11 +28,11 @@ function Robot({ hovered, setHovered }) {
     if (!names.length) return
     Object.values(actions).forEach(a => a?.fadeOut(0.3))
     if (hovered) {
-      const wave = names.find(n => n === 'Wave') || names.find(n => n.toLowerCase().includes('wave'))
+      const wave = names.find(n => /wave/i.test(n))
       const target = wave || names[0]
       actions[target]?.reset().fadeIn(0.3).play()
     } else {
-      const idle = names.find(n => n === 'Idle') || names.find(n => n.toLowerCase().includes('idle')) || names[0]
+      const idle = names.find(n => /idle/i.test(n)) || names[0]
       actions[idle]?.reset().fadeIn(0.3).play()
     }
   }, [hovered, actions, names])
@@ -55,48 +55,16 @@ function Robot({ hovered, setHovered }) {
   )
 }
 
-function Rings() {
-  const r1 = useRef()
-  const r2 = useRef()
-  const r3 = useRef()
-
-  useFrame((_, delta) => {
-    if (r1.current) r1.current.rotation.z += delta * 0.38
-    if (r2.current) r2.current.rotation.x += delta * 0.24
-    if (r3.current) {
-      r3.current.rotation.y += delta * 0.16
-      r3.current.rotation.z -= delta * 0.11
-    }
-  })
-
-  return (
-    <>
-      <mesh ref={r1} rotation={[Math.PI / 2.3, 0, 0]}>
-        <torusGeometry args={[2.3, 0.013, 8, 200]} />
-        <meshBasicMaterial color="#00e5ff" transparent opacity={0.6} />
-      </mesh>
-      <mesh ref={r2} rotation={[0.4, Math.PI / 5, Math.PI / 4.5]}>
-        <torusGeometry args={[2.6, 0.008, 8, 200]} />
-        <meshBasicMaterial color="#7928ca" transparent opacity={0.4} />
-      </mesh>
-      <mesh ref={r3} rotation={[Math.PI / 3.5, Math.PI / 7, 0]}>
-        <torusGeometry args={[2.85, 0.005, 8, 200]} />
-        <meshBasicMaterial color="#00e5ff" transparent opacity={0.22} />
-      </mesh>
-    </>
-  )
-}
-
-function Particles() {
-  const COUNT = 1200
+function FloatingParticles() {
+  const COUNT = 800
   const positions = useMemo(() => {
     const arr = new Float32Array(COUNT * 3)
     for (let i = 0; i < COUNT; i++) {
-      const r = 2.9 + Math.random() * 0.9
+      const r = 1.8 + Math.random() * 1.2
       const theta = Math.random() * Math.PI * 2
       const phi = Math.acos(2 * Math.random() - 1)
       arr[i * 3]     = r * Math.sin(phi) * Math.cos(theta)
-      arr[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta)
+      arr[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta) + 0.5
       arr[i * 3 + 2] = r * Math.cos(phi)
     }
     return arr
@@ -105,8 +73,8 @@ function Particles() {
   const ref = useRef()
   useFrame((_, delta) => {
     if (ref.current) {
-      ref.current.rotation.y += delta * 0.032
-      ref.current.rotation.x += delta * 0.014
+      ref.current.rotation.y += delta * 0.04
+      ref.current.rotation.x += delta * 0.015
     }
   })
 
@@ -115,8 +83,21 @@ function Particles() {
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" count={COUNT} array={positions} itemSize={3} />
       </bufferGeometry>
-      <pointsMaterial size={0.015} color="#00e5ff" transparent opacity={0.42} sizeAttenuation />
+      <pointsMaterial size={0.012} color="#00e5ff" transparent opacity={0.35} sizeAttenuation />
     </points>
+  )
+}
+
+function CyanRing() {
+  const ref = useRef()
+  useFrame((_, delta) => {
+    if (ref.current) ref.current.rotation.z += delta * 0.22
+  })
+  return (
+    <mesh ref={ref} rotation={[Math.PI / 2.2, 0, 0]} position={[0, -0.4, 0]}>
+      <torusGeometry args={[1.65, 0.008, 8, 160]} />
+      <meshBasicMaterial color="#00e5ff" transparent opacity={0.5} />
+    </mesh>
   )
 }
 
@@ -125,20 +106,18 @@ export default function RobotModel() {
 
   return (
     <>
-      <ambientLight intensity={0.4} />
-      <pointLight position={[4, 7, 4]}   intensity={4.0} color="#00e5ff" distance={20} decay={2} />
-      <pointLight position={[-4, 2, 3]}  intensity={2.2} color="#7928ca" distance={15} decay={2} />
-      <pointLight position={[0, -1, 6]}  intensity={1.5} color="#ffffff" distance={12} decay={2} />
-      <spotLight
-        position={[0, 12, 2]}
-        angle={0.35}
-        penumbra={0.9}
-        intensity={5}
-        color="#00e5ff"
-      />
+      <ambientLight intensity={0.55} />
+      {/* Key light — warm-ish from upper front-left */}
+      <pointLight position={[-2.5, 4, 3]}  intensity={3.5} color="#e0f4ff" distance={14} decay={2} />
+      {/* Cyan rim — right side */}
+      <pointLight position={[3, 2, 1]}     intensity={2.5} color="#00e5ff" distance={12} decay={2} />
+      {/* Purple fill — left back */}
+      <pointLight position={[-3, 0, -2]}   intensity={1.8} color="#7928ca" distance={12} decay={2} />
+      {/* Warm underlight */}
+      <pointLight position={[0, -2, 4]}    intensity={1.2} color="#ffffff" distance={8}  decay={2} />
       <Robot hovered={hovered} setHovered={setHovered} />
-      <Rings />
-      <Particles />
+      <FloatingParticles />
+      <CyanRing />
       <ContactShadows
         position={[0, -2.4, 0]}
         opacity={0.5}

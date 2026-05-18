@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import CharacterScene from '../three/CharacterScene'
 
 const ACCENT = '#00e5ff'
 
@@ -60,30 +61,15 @@ export default function About() {
             overflow: 'hidden',
           }}
         >
-          {/* Animated glow orb */}
-          <div style={{ width: '100%', height: '100%', minHeight: '480px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{
-              width: 'clamp(200px, 28vw, 360px)',
-              height: 'clamp(200px, 28vw, 360px)',
-              borderRadius: '50%',
-              background: 'radial-gradient(circle at 35% 35%, rgba(0,229,255,0.3) 0%, rgba(121,40,202,0.14) 50%, transparent 80%)',
-              border: '1px solid rgba(0,229,255,0.28)',
-              boxShadow: '0 0 90px rgba(0,229,255,0.2), 0 0 180px rgba(0,229,255,0.08)',
-              animation: 'aboutOrbFloat 4s ease-in-out infinite',
-            }} />
+          <div style={{ width: '100%', height: '100%', minHeight: '480px' }}>
+            <CharacterScene mode="desk" />
           </div>
-          <style>{`
-            @keyframes aboutOrbFloat {
-              0%,100% { transform: translateY(0) scale(1); }
-              50%      { transform: translateY(-20px) scale(1.04); }
-            }
-          `}</style>
-          {/* Subtle gradient overlay to blend into right panel */}
+          {/* Fade edge into right panel */}
           <div style={{
             position: 'absolute',
             top: 0,
             right: 0,
-            width: '80px',
+            width: '60px',
             height: '100%',
             background: 'linear-gradient(to right, transparent, #0a0a0f)',
             pointerEvents: 'none',
