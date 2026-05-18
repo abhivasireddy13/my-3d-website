@@ -1,7 +1,6 @@
-import { useState, useEffect, Suspense } from 'react'
-import { Canvas } from '@react-three/fiber'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import FaceModel from '../three/FaceModel'
+import SplineScene from './SplineScene'
 
 const ROLES = ['AI/ML Engineer', 'LLM Engineer', 'MLOps Engineer', 'GenAI Developer']
 const ACCENT = '#00e5ff'
@@ -195,7 +194,7 @@ export default function Hero() {
         </motion.div>
       </div>
 
-      {/* Three.js 3D sphere — right side */}
+      {/* Spline 3D character — right side */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -210,19 +209,7 @@ export default function Hero() {
           zIndex: 3,
         }}
       >
-        <Canvas
-          camera={{ position: [0, 0, 6], fov: 50 }}
-          gl={{ antialias: true, alpha: true }}
-          style={{ width: '100%', height: '100%' }}
-        >
-          <ambientLight intensity={0.45} />
-          <pointLight position={[3, 3, 3]}   intensity={1.4} color="#00e5ff" />
-          <pointLight position={[-3, -2, 2]} intensity={0.6} color="#7928ca" />
-          <pointLight position={[0, -3, 4]}  intensity={0.3} color="#ffffff" />
-          <Suspense fallback={null}>
-            <FaceModel />
-          </Suspense>
-        </Canvas>
+        <SplineScene style={{ width: '100%', height: '100%' }} />
       </motion.div>
 
       {/* Scroll indicator */}
