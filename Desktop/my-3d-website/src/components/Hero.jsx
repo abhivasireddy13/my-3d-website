@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import SplineScene from './SplineScene'
+import { Canvas } from '@react-three/fiber'
+import RobotModel from '../three/RobotModel'
 
 const ROLES = ['AI/ML Engineer', 'LLM Engineer', 'MLOps Engineer', 'GenAI Developer']
 const ACCENT = '#00e5ff'
@@ -79,9 +80,9 @@ export default function Hero() {
         style={{
           position: 'relative',
           zIndex: 10,
-          padding: '0 clamp(2rem, 8vw, 9rem)',
-          flex: '0 0 52%',
-          maxWidth: '52%',
+          padding: '0 clamp(2rem, 6vw, 7rem)',
+          flex: '0 0 44%',
+          maxWidth: '44%',
         }}
       >
         <motion.p
@@ -194,7 +195,7 @@ export default function Hero() {
         </motion.div>
       </div>
 
-      {/* Spline 3D character — right side */}
+      {/* Robot 3D — right side, dominant panel */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -204,12 +205,21 @@ export default function Hero() {
           position: 'absolute',
           right: 0,
           top: 0,
-          width: '52%',
+          width: '60%',
           height: '100%',
           zIndex: 3,
         }}
       >
-        <SplineScene style={{ width: '100%', height: '100%' }} />
+        <Canvas
+          camera={{ position: [0, 1.2, 6.5], fov: 45 }}
+          gl={{ antialias: true, alpha: true, toneMapping: 4 }}
+          shadows={false}
+          style={{ width: '100%', height: '100%' }}
+        >
+          <Suspense fallback={null}>
+            <RobotModel />
+          </Suspense>
+        </Canvas>
       </motion.div>
 
       {/* Scroll indicator */}
@@ -240,8 +250,8 @@ export default function Hero() {
       </motion.div>
 
       <style>{`
-        @media (max-width: 768px) {
-          .hero-left   { flex: 0 0 100% !important; max-width: 100% !important; }
+        @media (max-width: 900px) {
+          .hero-left   { flex: 0 0 100% !important; max-width: 100% !important; padding: 0 2rem !important; }
           .hero-canvas { display: none !important; }
         }
       `}</style>
