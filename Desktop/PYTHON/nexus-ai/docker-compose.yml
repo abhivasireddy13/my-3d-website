@@ -80,12 +80,47 @@ services:
     volumes:
       - ./ml-service:/app
 
+  superset:
+    image: apache/superset:4.1.1
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-nexus_superset_secret_CHANGE_ME_32chars}
+      SUPERSET_ADMIN_USERNAME: ${SUPERSET_ADMIN_USERNAME:-admin}
+      SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD:-admin}
+      SUPERSET_ADMIN_EMAIL: ${SUPERSET_ADMIN_EMAIL:-admin@nexus.ai}
+      SUPERSET_CONFIG_PATH: /app/pythonpath/superset_config.py
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports: ["8088:8088"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_started}
+    volumes:
+      - ./automation/superset/superset_config.py:/app/pythonpath/superset_config.py
+      - ./automation/superset/setup_dashboards.py:/app/pythonpath/setup_dashboards.py
+      - ./automation/superset/docker-entrypoint.sh:/app/docker-entrypoint.sh
+      - supersetdata:/app/superset_home
+    command: ["/bin/bash", "/app/docker-entrypoint.sh"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
+      interval: 30s
+      timeout: 15s
+      retries: 10
+      start_period: 180s
+
   frontend:
     build: ./frontend
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000
       BACKEND_URL: http://backend:8000
+      NEXT_PUBLIC_SUPERSET_URL: http://localhost:8088
+      INTERNAL_SECRET: ${INTERNAL_SECRET:-change_me_shared_secret}
     ports: ["3000:3000"]
     depends_on: [backend]
     volumes:
@@ -96,3 +131,4 @@ volumes:
   pgdata:
   mongodata:
   n8ndata:
+  supersetdata:
