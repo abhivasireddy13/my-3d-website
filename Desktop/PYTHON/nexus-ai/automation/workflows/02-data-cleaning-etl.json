@@ -1,0 +1,151 @@
+{
+  "name": "02-data-cleaning-etl",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "data-cleaning-etl",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "trigger",
+      "name": "Webhook: data-cleaning-etl",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Log incoming payload and pass through.\nconst job = items[0].json;\nconsole.log('ETL workflow triggered for job:', job.job_id);\nreturn [{ json: { job_id: job.job_id, filename: job.filename } }];"
+      },
+      "id": "log-trigger",
+      "name": "Log: Trigger Received",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://backend:8000/internal/pipeline-callback",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "x-internal-secret", "value": "change_me_shared_secret" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"job_id\": \"{{ $json.job_id }}\", \"status\": \"cleaning\" }"
+      },
+      "id": "set-cleaning",
+      "name": "Status: cleaning",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Placeholder: real implementation would call ml-service or read\n// the file from /storage/{job_id}/ and perform cleaning logic.\nconst job = items[0].json;\nreturn [{ json: { job_id: job.job_id } }];"
+      },
+      "id": "clean-fn",
+      "name": "Clean Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://backend:8000/internal/pipeline-callback",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "x-internal-secret", "value": "change_me_shared_secret" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"job_id\": \"{{ $json.job_id }}\", \"status\": \"storing\" }"
+      },
+      "id": "set-storing",
+      "name": "Status: storing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://backend:8000/internal/pipeline-callback",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "x-internal-secret", "value": "change_me_shared_secret" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"job_id\": \"{{ $json.job_id }}\", \"status\": \"modeling\" }"
+      },
+      "id": "set-modeling",
+      "name": "Status: modeling",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://backend:8000/internal/pipeline-callback",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "x-internal-secret", "value": "change_me_shared_secret" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"job_id\": \"{{ $json.job_id }}\", \"status\": \"recommending\" }"
+      },
+      "id": "set-recommending",
+      "name": "Status: recommending",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://backend:8000/internal/pipeline-callback",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "x-internal-secret", "value": "change_me_shared_secret" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"job_id\": \"{{ $json.job_id }}\", \"status\": \"done\" }"
+      },
+      "id": "set-done",
+      "name": "Status: done",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 300]
+    }
+  ],
+  "connections": {
+    "Webhook: data-cleaning-etl": {
+      "main": [[{ "node": "Log: Trigger Received", "type": "main", "index": 0 }]]
+    },
+    "Log: Trigger Received": {
+      "main": [[{ "node": "Status: cleaning", "type": "main", "index": 0 }]]
+    },
+    "Status: cleaning": {
+      "main": [[{ "node": "Clean Data", "type": "main", "index": 0 }]]
+    },
+    "Clean Data": {
+      "main": [[{ "node": "Status: storing", "type": "main", "index": 0 }]]
+    },
+    "Status: storing": {
+      "main": [[{ "node": "Status: modeling", "type": "main", "index": 0 }]]
+    },
+    "Status: modeling": {
+      "main": [[{ "node": "Status: recommending", "type": "main", "index": 0 }]]
+    },
+    "Status: recommending": {
+      "main": [[{ "node": "Status: done", "type": "main", "index": 0 }]]
+    }
+  }
+}
