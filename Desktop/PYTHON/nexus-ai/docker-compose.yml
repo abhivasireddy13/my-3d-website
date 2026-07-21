@@ -52,6 +52,11 @@ services:
       MONGO_URL: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:27017/?authSource=admin
       REDIS_URL: redis://redis:6379/0
       N8N_URL: http://n8n:5678
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      NOTIFICATION_EMAIL: ${NOTIFICATION_EMAIL:-}
     ports: ["8000:8000"]
     depends_on:
       postgres: {condition: service_healthy}

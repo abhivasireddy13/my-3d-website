@@ -4,7 +4,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.core.limiter import limiter
-from app.api.v1 import auth, uploads, internal
+from app.api.v1 import auth, uploads, internal, reports
 
 app = FastAPI(title="NEXUS AI Backend", version="0.1.0")
 app.state.limiter = limiter
@@ -20,6 +20,7 @@ app.add_middleware(
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(uploads.router, prefix="/api/v1")
+app.include_router(reports.router, prefix="/api/v1")
 app.include_router(internal.router)
 
 

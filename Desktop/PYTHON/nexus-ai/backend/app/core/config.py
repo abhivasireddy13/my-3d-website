@@ -11,6 +11,12 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    # SMTP — leave SMTP_USER empty to disable email notifications
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    NOTIFICATION_EMAIL: str = ""  # recipient; defaults to SMTP_USER when empty
 
     class Config:
         env_file = ".env"

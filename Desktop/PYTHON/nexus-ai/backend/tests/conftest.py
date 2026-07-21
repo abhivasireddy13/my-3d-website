@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import NullPool
 from unittest.mock import MagicMock
 
 # Register all models with Base before importing app so create_all sees them.
@@ -16,6 +17,7 @@ import app.models.dim_region    # noqa: F401
 import app.models.dim_customer  # noqa: F401
 import app.models.fact_sales         # noqa: F401
 import app.models.fact_predictions   # noqa: F401
+import app.models.report             # noqa: F401
 
 from app.db.postgres import Base, get_db
 from app.core.limiter import limiter
@@ -23,7 +25,15 @@ from app.main import app
 
 TEST_DB_URL = "sqlite:///./test.db"
 
-engine = create_engine(TEST_DB_URL, connect_args={"check_same_thread": False})
+# NullPool ensures every session.close() actually closes the underlying
+# SQLite connection, releasing all locks immediately. Without this, the
+# connection pool can hold onto connections between test helper calls and
+# client requests, causing "database is locked" errors in file-based SQLite.
+engine = create_engine(
+    TEST_DB_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=NullPool,
+)
 TestingSession = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
@@ -76,6 +86,9 @@ def mock_mongo(monkeypatch):
     monkeypatch.setattr("app.api.v1.uploads.raw_uploads", mock_coll)
     monkeypatch.setattr("app.api.v1.uploads.pipeline_results", mock_coll)
     monkeypatch.setattr("app.services.etl.pipeline_results", mock_coll)
+    monkeypatch.setattr("app.api.v1.reports.pipeline_results", mock_coll)
+    monkeypatch.setattr("app.api.v1.internal.workflow_logs", mock_coll)
+    monkeypatch.setattr("app.api.v1.internal.pipeline_results", mock_coll)
 
     return _store
 

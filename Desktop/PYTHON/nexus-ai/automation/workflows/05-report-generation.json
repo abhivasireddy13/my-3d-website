@@ -1,0 +1,122 @@
+{
+  "name": "05-Report-Generation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "report-generation",
+        "responseMode": "onReceived",
+        "responseData": "allEntries"
+      },
+      "id": "node-05-webhook",
+      "name": "Webhook: Report Generation",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "report-generation-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json;\nconst jobId = body.job_id || null;\nreturn [{ json: { job_id: jobId } }];"
+      },
+      "id": "node-05-extract",
+      "name": "Extract Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'http://backend:8000/internal/generate-report/' + $json.job_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "x-internal-secret", "value": "={{ $env.INTERNAL_SECRET || 'change_me_shared_secret' }}" }
+          ]
+        },
+        "method": "POST",
+        "sendBody": false
+      },
+      "id": "node-05-generate",
+      "name": "Generate Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "url": "http://backend:8000/internal/pipeline-callback",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "x-internal-secret", "value": "={{ $env.INTERNAL_SECRET || 'change_me_shared_secret' }}" }
+          ]
+        },
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ job_id: $('Extract Payload').first().json.job_id, status: 'done', stage: 'report-ready', metadata: { report_id: $json.report_id, download_url: $json.download_url, n_predictions: $json.n_predictions } }) }}"
+      },
+      "id": "node-05-callback",
+      "name": "Pipeline Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "url": "http://n8n:5678/webhook/notifications",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ job_id: $('Extract Payload').first().json.job_id, subject: 'NEXUS AI — Pipeline complete for job ' + $('Extract Payload').first().json.job_id.substring(0, 8), body: 'Your NEXUS AI pipeline has completed successfully.\\n\\nJob ID: ' + $('Extract Payload').first().json.job_id + '\\nReport: http://localhost:8000' + $('Generate Report').first().json.download_url + '\\nRecords: ' + ($('Generate Report').first().json.kpis.n_records || 0) + '\\nRevenue: $' + (($('Generate Report').first().json.kpis.total_revenue || 0).toFixed(2)) + '\\nPredictions: ' + ($('Generate Report').first().json.n_predictions || 0) }) }}"
+      },
+      "id": "node-05-trigger-notify",
+      "name": "Trigger Notifications",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    }
+  ],
+  "connections": {
+    "Webhook: Report Generation": {
+      "main": [[{ "node": "Extract Payload", "type": "main", "index": 0 }]]
+    },
+    "Extract Payload": {
+      "main": [[{ "node": "Generate Report", "type": "main", "index": 0 }]]
+    },
+    "Generate Report": {
+      "main": [[{ "node": "Pipeline Callback", "type": "main", "index": 0 }]]
+    },
+    "Pipeline Callback": {
+      "main": [[{ "node": "Trigger Notifications", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "05-report-generation-v1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "05-report-generation",
+  "tags": []
+}
