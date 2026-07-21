@@ -59,6 +59,7 @@ services:
       redis: {condition: service_started}
     volumes:
       - ./backend:/app
+      - ./storage:/storage
 
   ml-service:
     build: ./ml-service

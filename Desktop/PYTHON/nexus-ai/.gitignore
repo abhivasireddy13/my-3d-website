@@ -24,6 +24,10 @@ node_modules/
 .next/
 out/
 
+# Uploaded files — keep directory structure, ignore contents
+storage/*
+!storage/.gitkeep
+
 # Docker / misc
 .DS_Store
 *.log

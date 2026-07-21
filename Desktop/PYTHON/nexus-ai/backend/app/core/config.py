@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     N8N_URL: str = "http://localhost:5678"
     N8N_WEBHOOK_SECRET: str = "change_me_shared_secret"
+    STORAGE_DIR: str = "/storage"
     JWT_SECRET: str = "dev_secret_change_me"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
