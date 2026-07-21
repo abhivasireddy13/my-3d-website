@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import AppShell from "@/components/app-shell";
 
 // ─── Pipeline step definitions ───────────────────────────────────────────────
 const STEPS = [
@@ -134,7 +135,7 @@ export default function UploadPage() {
     const data = await res.json();
     setFile(null);
     setJobId(data.job_id);
-    fetchHistory(); // show the new job in history immediately
+    fetchHistory();
   };
 
   // ── Derived stepper state ───────────────────────────────────────────────────
@@ -143,148 +144,149 @@ export default function UploadPage() {
   const isDone = poll?.status === "done";
 
   return (
-    <main className="mx-auto max-w-3xl p-8 space-y-8">
-      {/* Nav */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Upload CSV</h1>
-        <a href="/dashboard" className="text-sm text-slate-500 hover:text-slate-800">
-          ← Dashboard
-        </a>
-      </div>
-
-      {/* Drop zone */}
-      <div
-        role="button"
-        tabIndex={0}
-        aria-label="File drop zone"
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onDrop={onDrop}
-        onClick={() => fileInputRef.current?.click()}
-        onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
-        className={[
-          "rounded-xl border-2 border-dashed p-14 text-center cursor-pointer transition-colors select-none",
-          dragOver
-            ? "border-blue-500 bg-blue-50"
-            : "border-slate-300 bg-white hover:border-blue-400 hover:bg-slate-50",
-        ].join(" ")}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".csv"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) acceptFile(f);
-            e.target.value = "";
-          }}
-        />
-        {file ? (
-          <p className="font-medium text-slate-700">
-            {file.name}{" "}
-            <span className="text-slate-400 font-normal">
-              ({(file.size / 1024).toFixed(1)} KB)
-            </span>
+    <AppShell breadcrumb={[{ label: "Upload CSV" }]}>
+      <div className="mx-auto max-w-3xl space-y-8">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Upload CSV</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Upload a sales CSV to kick off the full ETL + ML pipeline.
           </p>
-        ) : (
-          <div className="space-y-1">
-            <p className="text-slate-600 font-medium">
-              Drag &amp; drop a CSV file here
+        </div>
+
+        {/* Drop zone */}
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="File drop zone"
+          onDragOver={onDragOver}
+          onDragLeave={onDragLeave}
+          onDrop={onDrop}
+          onClick={() => fileInputRef.current?.click()}
+          onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
+          className={[
+            "rounded-xl border-2 border-dashed p-14 text-center cursor-pointer transition-colors select-none",
+            dragOver
+              ? "border-blue-500 bg-blue-50"
+              : "border-slate-300 bg-white hover:border-blue-400 hover:bg-slate-50",
+          ].join(" ")}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) acceptFile(f);
+              e.target.value = "";
+            }}
+          />
+          {file ? (
+            <p className="font-medium text-slate-700">
+              {file.name}{" "}
+              <span className="text-slate-400 font-normal">
+                ({(file.size / 1024).toFixed(1)} KB)
+              </span>
             </p>
-            <p className="text-slate-400 text-sm">or click to browse</p>
+          ) : (
+            <div className="space-y-1">
+              <p className="text-slate-600 font-medium">
+                Drag &amp; drop a CSV file here
+              </p>
+              <p className="text-slate-400 text-sm">or click to browse</p>
+            </div>
+          )}
+        </div>
+
+        {/* Upload button */}
+        {file && !uploading && (
+          <button
+            onClick={handleUpload}
+            className="rounded-lg bg-blue-600 px-6 py-2.5 text-white font-medium hover:bg-blue-700 transition-colors"
+          >
+            Upload &amp; Process
+          </button>
+        )}
+
+        {uploading && (
+          <p className="text-slate-500 animate-pulse">Uploading…</p>
+        )}
+
+        {uploadError && (
+          <p className="text-red-600 text-sm">{uploadError}</p>
+        )}
+
+        {/* ── Pipeline stepper ─────────────────────────────────────────────── */}
+        {poll && (
+          <div className="rounded-xl border bg-white p-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-slate-700">
+                Job{" "}
+                <span className="font-mono text-slate-500 text-sm">
+                  {poll.job_id.slice(0, 8)}…
+                </span>
+              </h2>
+              <StatusBadge status={poll.status} />
+            </div>
+
+            {isFailed ? (
+              <div className="rounded-lg bg-red-50 border border-red-200 p-4 space-y-2">
+                <p className="font-medium text-red-700">Pipeline failed</p>
+                {poll.error_detail && (
+                  <pre className="text-sm text-red-600 whitespace-pre-wrap overflow-auto max-h-40">
+                    {JSON.stringify(poll.error_detail, null, 2)}
+                  </pre>
+                )}
+              </div>
+            ) : (
+              <Stepper activeStep={activeStep} isDone={isDone} />
+            )}
+
+            {isDone && (
+              <p className="text-green-600 font-medium text-sm">
+                Processing complete — results are available.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* ── Upload history ────────────────────────────────────────────────── */}
+        {history.length > 0 && (
+          <div className="rounded-xl border bg-white overflow-hidden">
+            <div className="px-5 py-3 border-b bg-slate-50 flex items-center justify-between">
+              <h2 className="font-semibold text-slate-700">Recent Uploads</h2>
+              <span className="text-xs text-slate-400">{historyTotal} total</span>
+            </div>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-slate-500 border-b">
+                  <th className="px-5 py-2 font-medium">File</th>
+                  <th className="px-5 py-2 font-medium">Status</th>
+                  <th className="px-5 py-2 font-medium">Uploaded</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((item) => (
+                  <tr key={item.job_id} className="border-t hover:bg-slate-50 transition-colors">
+                    <td className="px-5 py-2.5 font-medium text-slate-800">
+                      {item.filename}
+                    </td>
+                    <td className="px-5 py-2.5">
+                      <StatusBadge status={item.status} />
+                    </td>
+                    <td className="px-5 py-2.5 text-slate-400 text-xs">
+                      {item.created_at
+                        ? new Date(item.created_at).toLocaleString()
+                        : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
-
-      {/* Upload button */}
-      {file && !uploading && (
-        <button
-          onClick={handleUpload}
-          className="rounded-lg bg-blue-600 px-6 py-2.5 text-white font-medium hover:bg-blue-700 transition-colors"
-        >
-          Upload &amp; Process
-        </button>
-      )}
-
-      {uploading && (
-        <p className="text-slate-500 animate-pulse">Uploading…</p>
-      )}
-
-      {uploadError && (
-        <p className="text-red-600 text-sm">{uploadError}</p>
-      )}
-
-      {/* ── Pipeline stepper ─────────────────────────────────────────────── */}
-      {poll && (
-        <div className="rounded-xl border bg-white p-6 space-y-5">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-slate-700">
-              Job{" "}
-              <span className="font-mono text-slate-500 text-sm">
-                {poll.job_id.slice(0, 8)}…
-              </span>
-            </h2>
-            <StatusBadge status={poll.status} />
-          </div>
-
-          {isFailed ? (
-            <div className="rounded-lg bg-red-50 border border-red-200 p-4 space-y-2">
-              <p className="font-medium text-red-700">Pipeline failed</p>
-              {poll.error_detail && (
-                <pre className="text-sm text-red-600 whitespace-pre-wrap overflow-auto max-h-40">
-                  {JSON.stringify(poll.error_detail, null, 2)}
-                </pre>
-              )}
-            </div>
-          ) : (
-            <Stepper activeStep={activeStep} isDone={isDone} />
-          )}
-
-          {isDone && (
-            <p className="text-green-600 font-medium text-sm">
-              Processing complete — results are available.
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* ── Upload history ────────────────────────────────────────────────── */}
-      {history.length > 0 && (
-        <div className="rounded-xl border bg-white overflow-hidden">
-          <div className="px-5 py-3 border-b bg-slate-50 flex items-center justify-between">
-            <h2 className="font-semibold text-slate-700">Recent Uploads</h2>
-            <span className="text-xs text-slate-400">{historyTotal} total</span>
-          </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs text-slate-500 border-b">
-                <th className="px-5 py-2 font-medium">File</th>
-                <th className="px-5 py-2 font-medium">Status</th>
-                <th className="px-5 py-2 font-medium">Uploaded</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.map((item) => (
-                <tr key={item.job_id} className="border-t hover:bg-slate-50 transition-colors">
-                  <td className="px-5 py-2.5 font-medium text-slate-800">
-                    {item.filename}
-                  </td>
-                  <td className="px-5 py-2.5">
-                    <StatusBadge status={item.status} />
-                  </td>
-                  <td className="px-5 py-2.5 text-slate-400 text-xs">
-                    {item.created_at
-                      ? new Date(item.created_at).toLocaleString()
-                      : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </main>
+    </AppShell>
   );
 }
 

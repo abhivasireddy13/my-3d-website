@@ -1,6 +1,25 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  RefreshCw,
+  Sparkles,
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Filter,
+  X,
+} from "lucide-react";
+import AppShell from "@/components/app-shell";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { formatDate } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -22,6 +41,7 @@ interface Prediction {
   model_name: string;
   model_version: string | null;
   prediction_value: number | null;
+  region: string | null;
   is_anomaly: boolean | null;
   created_at: string;
   recommendation: Recommendation | null;
@@ -29,93 +49,58 @@ interface Prediction {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function triggerLabel(triggered_by: string | null): string {
-  if (triggered_by === "anomaly_detected") return "Anomaly Detected";
-  if (triggered_by === "forecast_decline") return "Forecast Decline";
-  return triggered_by ?? "Unknown trigger";
-}
-
-function confidenceLabel(score: number | null): string {
+function confidenceLabel(score: number | null) {
   if (score === null) return "—";
   if (score >= 0.9) return "High";
   if (score >= 0.6) return "Medium";
-  return "Low (fallback)";
+  return "Low";
 }
 
-function formatDate(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString();
+function triggerLabel(t: string | null) {
+  if (t === "anomaly_detected") return "Anomaly Detected";
+  if (t === "forecast_decline") return "Forecast Decline";
+  return t ?? "—";
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function StatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    generated: "bg-emerald-900 text-emerald-300 border-emerald-700",
-    fallback: "bg-amber-900 text-amber-300 border-amber-700",
-    failed: "bg-red-900 text-red-300 border-red-700",
-  };
-  const cls = styles[status] ?? "bg-slate-700 text-slate-300 border-slate-600";
-  return (
-    <span className={`text-xs px-2 py-0.5 rounded border font-mono ${cls}`}>
-      {status}
-    </span>
-  );
-}
-
-function AnomalyBadge({ is_anomaly }: { is_anomaly: boolean | null }) {
-  if (is_anomaly === true)
-    return (
-      <span className="text-xs px-2 py-0.5 rounded border bg-red-900 text-red-300 border-red-700 font-mono">
-        ANOMALY
-      </span>
-    );
-  if (is_anomaly === false)
-    return (
-      <span className="text-xs px-2 py-0.5 rounded border bg-slate-700 text-slate-400 border-slate-600 font-mono">
-        OK
-      </span>
-    );
-  return null;
-}
-
 function RecommendationPanel({ rec }: { rec: Recommendation }) {
+  const statusVariant =
+    rec.status === "generated" ? "success" : rec.status === "fallback" ? "warning" : "destructive";
+
   return (
-    <div className="mt-3 bg-slate-900 border border-slate-700 rounded-lg p-4">
-      <div className="flex flex-wrap items-center gap-3 mb-3">
-        <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wide">
+    <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Sparkles size={14} className="text-emerald-600" />
+        <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
           AI Recommendation
         </span>
-        <StatusBadge status={rec.status} />
+        <Badge variant={statusVariant}>{rec.status}</Badge>
         {rec.triggered_by && (
-          <span className="text-xs text-slate-400">
-            Trigger:{" "}
-            <span className="text-slate-200">{triggerLabel(rec.triggered_by)}</span>
+          <span className="text-xs text-slate-500">
+            Trigger: <span className="text-slate-700">{triggerLabel(rec.triggered_by)}</span>
           </span>
         )}
         {rec.metric_delta !== null && (
-          <span className="text-xs text-slate-400">
-            Change:{" "}
-            <span
-              className={rec.metric_delta < 0 ? "text-red-400" : "text-emerald-400"}
-            >
+          <span className="text-xs text-slate-500">
+            Delta:{" "}
+            <span className={rec.metric_delta < 0 ? "text-red-600" : "text-emerald-600"}>
               {(rec.metric_delta * 100).toFixed(1)}%
             </span>
           </span>
         )}
-        <span className="text-xs text-slate-400">
-          Confidence:{" "}
-          <span className="text-slate-200">{confidenceLabel(rec.confidence_score)}</span>
+        <span className="text-xs text-slate-500">
+          Confidence: <span className="text-slate-700">{confidenceLabel(rec.confidence_score)}</span>
         </span>
         {rec.model_used && (
-          <span className="text-xs text-slate-500 font-mono">{rec.model_used}</span>
+          <span className="text-xs text-slate-400 font-mono">{rec.model_used}</span>
         )}
       </div>
 
-      <ol className="space-y-2">
+      <ol className="space-y-1.5">
         {rec.actions.map((action, i) => (
-          <li key={i} className="flex gap-2 text-sm text-slate-200">
-            <span className="shrink-0 w-5 h-5 rounded-full bg-cyan-800 text-cyan-200 text-xs flex items-center justify-center font-bold">
+          <li key={i} className="flex gap-2.5 text-sm text-slate-700">
+            <span className="shrink-0 mt-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
               {i + 1}
             </span>
             {action}
@@ -124,9 +109,7 @@ function RecommendationPanel({ rec }: { rec: Recommendation }) {
       </ol>
 
       {rec.error_message && (
-        <p className="mt-2 text-xs text-red-400">
-          Error: {rec.error_message}
-        </p>
+        <p className="text-xs text-red-500">Error: {rec.error_message}</p>
       )}
     </div>
   );
@@ -136,91 +119,130 @@ function PredictionCard({ pred }: { pred: Prediction }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-semibold text-slate-100 text-sm">{pred.model_name}</span>
-          {pred.model_version && (
-            <span className="text-xs text-slate-500 font-mono">v{pred.model_version}</span>
-          )}
-          <AnomalyBadge is_anomaly={pred.is_anomaly} />
-          {pred.recommendation && (
-            <span className="text-xs px-2 py-0.5 rounded border bg-cyan-900 text-cyan-300 border-cyan-700">
-              has recommendation
-            </span>
-          )}
-        </div>
-        <div className="text-right">
-          {pred.prediction_value !== null && (
-            <span className="text-lg font-bold text-slate-100">
-              {pred.prediction_value.toFixed(2)}
-            </span>
-          )}
-          <p className="text-xs text-slate-500">{formatDate(pred.created_at)}</p>
-        </div>
-      </div>
+    <Card className="overflow-hidden">
+      <CardContent className="p-5">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold text-slate-900 text-sm">{pred.model_name}</span>
+            {pred.model_version && (
+              <span className="text-xs text-slate-400 font-mono">v{pred.model_version}</span>
+            )}
+            {pred.region && (
+              <Badge variant="secondary">{pred.region}</Badge>
+            )}
+            {pred.is_anomaly === true && (
+              <Badge variant="destructive" className="flex items-center gap-1">
+                <AlertTriangle size={10} />
+                Anomaly
+              </Badge>
+            )}
+            {pred.is_anomaly === false && (
+              <Badge variant="success" className="flex items-center gap-1">
+                <CheckCircle2 size={10} />
+                OK
+              </Badge>
+            )}
+            {pred.recommendation && (
+              <Badge variant="purple">has recommendation</Badge>
+            )}
+          </div>
 
-      {pred.upload_job_id && (
-        <p className="mt-1 text-xs text-slate-500 font-mono">
-          Job: {pred.upload_job_id.substring(0, 8)}…
-        </p>
-      )}
-
-      {pred.recommendation && (
-        <div>
-          <button
-            onClick={() => setExpanded((v) => !v)}
-            className="mt-2 text-xs text-cyan-400 hover:text-cyan-300 underline underline-offset-2"
-          >
-            {expanded ? "Hide recommendations" : "Show recommendations"}
-          </button>
-          {expanded && <RecommendationPanel rec={pred.recommendation} />}
+          <div className="text-right">
+            {pred.prediction_value !== null && (
+              <span className="text-xl font-bold text-slate-900">
+                {pred.prediction_value.toFixed(2)}
+              </span>
+            )}
+            <p className="text-xs text-slate-400 mt-0.5">{formatDate(pred.created_at)}</p>
+          </div>
         </div>
-      )}
-    </div>
+
+        {pred.upload_job_id && (
+          <p className="mt-1 text-xs text-slate-400 font-mono">
+            Job: {pred.upload_job_id.substring(0, 8)}…
+          </p>
+        )}
+
+        {pred.recommendation && (
+          <>
+            <button
+              onClick={() => setExpanded((v) => !v)}
+              className="mt-2 flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-800 font-medium transition-colors"
+            >
+              {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              {expanded ? "Hide" : "Show"} AI recommendation
+            </button>
+            {expanded && <RecommendationPanel rec={pred.recommendation} />}
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function PredictionsPage() {
+  const router = useRouter();
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState("all");
+
+  // Filters
+  const [filterAnomaly, setFilterAnomaly] = useState<"all" | "anomaly" | "ok">("all");
+  const [filterRec, setFilterRec] = useState<"all" | "with" | "without">("all");
+  const [filterRegion, setFilterRegion] = useState("");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({ limit: "100" });
-      const resp = await fetch(`/api/predictions?${params}`, { cache: "no-store" });
-      if (resp.status === 401) {
-        setError("Session expired — please log in again.");
-        return;
-      }
-      if (!resp.ok) {
-        setError(`Failed to load predictions (${resp.status})`);
-        return;
-      }
+      const resp = await fetch(`/api/predictions?limit=200`, { cache: "no-store" });
+      if (resp.status === 401) { router.push("/login"); return; }
+      if (!resp.ok) { setError(`Failed to load predictions (${resp.status})`); return; }
       const data = await resp.json();
       setPredictions(data.predictions ?? []);
       setTotal(data.total ?? 0);
-    } catch (e) {
+    } catch {
       setError("Network error — could not reach the backend.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [router]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
+
+  // Derived filter values
+  const regions = Array.from(
+    new Set(predictions.map((p) => p.region).filter(Boolean) as string[])
+  ).sort();
+
+  const hasActiveFilters =
+    filterAnomaly !== "all" ||
+    filterRec !== "all" ||
+    filterRegion !== "" ||
+    filterDateFrom !== "" ||
+    filterDateTo !== "";
+
+  const clearFilters = () => {
+    setFilterAnomaly("all");
+    setFilterRec("all");
+    setFilterRegion("");
+    setFilterDateFrom("");
+    setFilterDateTo("");
+  };
 
   const filtered = predictions.filter((p) => {
-    if (filter === "anomaly") return p.is_anomaly === true;
-    if (filter === "recommended") return p.recommendation !== null;
+    if (filterAnomaly === "anomaly" && p.is_anomaly !== true) return false;
+    if (filterAnomaly === "ok" && p.is_anomaly !== false) return false;
+    if (filterRec === "with" && !p.recommendation) return false;
+    if (filterRec === "without" && p.recommendation) return false;
+    if (filterRegion && p.region !== filterRegion) return false;
+    if (filterDateFrom && p.created_at && p.created_at < filterDateFrom) return false;
+    if (filterDateTo && p.created_at && p.created_at > filterDateTo + "T23:59:59") return false;
     return true;
   });
 
@@ -228,95 +250,152 @@ export default function PredictionsPage() {
   const anomalies = predictions.filter((p) => p.is_anomaly === true).length;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6">
-      <div className="max-w-5xl mx-auto">
+    <AppShell breadcrumb={[{ label: "Predictions" }]}>
+      <div className="max-w-5xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-100">ML Predictions</h1>
-            <p className="text-sm text-slate-400 mt-1">
-              AI-powered insights generated after each pipeline run
+            <h1 className="text-2xl font-bold text-slate-900">ML Predictions</h1>
+            <p className="text-sm text-slate-500 mt-1">
+              AI-powered forecast values and anomaly detection from each pipeline run.
             </p>
           </div>
-          <button
-            onClick={load}
-            disabled={loading}
-            className="text-sm px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-200 border border-slate-600"
-          >
-            {loading ? "Loading…" : "Refresh"}
-          </button>
+          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+            Refresh
+          </Button>
         </div>
 
         {/* KPI strip */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-3 gap-4">
           {[
             { label: "Total predictions", value: total },
             { label: "With recommendations", value: withRecs },
-            { label: "Anomalies detected", value: anomalies },
+            { label: "Anomalies", value: anomalies },
           ].map(({ label, value }) => (
-            <div
-              key={label}
-              className="bg-slate-800 border border-slate-700 rounded-xl p-4 text-center"
-            >
-              <p className="text-3xl font-bold text-cyan-400">{value}</p>
-              <p className="text-xs text-slate-400 mt-1">{label}</p>
-            </div>
+            <Card key={label}>
+              <CardContent className="py-4 text-center">
+                <p className="text-3xl font-bold text-slate-900">{value}</p>
+                <p className="text-xs text-slate-500 mt-1">{label}</p>
+              </CardContent>
+            </Card>
           ))}
         </div>
 
-        {/* Filter tabs */}
-        <div className="flex gap-2 mb-6">
-          {[
-            { key: "all", label: `All (${total})` },
-            { key: "recommended", label: `With recommendations (${withRecs})` },
-            { key: "anomaly", label: `Anomalies (${anomalies})` },
-          ].map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setFilter(key)}
-              className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
-                filter === key
-                  ? "bg-cyan-700 border-cyan-600 text-white"
-                  : "bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200"
-              }`}
+        {/* Filter bar */}
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+            <Filter size={13} />
+            Filters
+          </div>
+
+          <Select
+            value={filterAnomaly}
+            onChange={(e) => setFilterAnomaly(e.target.value as typeof filterAnomaly)}
+            className="h-8 text-xs w-36"
+          >
+            <option value="all">All status</option>
+            <option value="anomaly">Anomalies only</option>
+            <option value="ok">Normal only</option>
+          </Select>
+
+          <Select
+            value={filterRec}
+            onChange={(e) => setFilterRec(e.target.value as typeof filterRec)}
+            className="h-8 text-xs w-44"
+          >
+            <option value="all">All recommendations</option>
+            <option value="with">With recommendation</option>
+            <option value="without">Without recommendation</option>
+          </Select>
+
+          {regions.length > 0 && (
+            <Select
+              value={filterRegion}
+              onChange={(e) => setFilterRegion(e.target.value)}
+              className="h-8 text-xs w-36"
             >
-              {label}
-            </button>
-          ))}
+              <option value="">All regions</option>
+              {regions.map((r) => <option key={r} value={r}>{r}</option>)}
+            </Select>
+          )}
+
+          <div className="flex items-center gap-1 text-xs text-slate-500">
+            <span>From</span>
+            <Input
+              type="date"
+              value={filterDateFrom}
+              onChange={(e) => setFilterDateFrom(e.target.value)}
+              className="h-8 text-xs w-36"
+            />
+          </div>
+          <div className="flex items-center gap-1 text-xs text-slate-500">
+            <span>To</span>
+            <Input
+              type="date"
+              value={filterDateTo}
+              onChange={(e) => setFilterDateTo(e.target.value)}
+              className="h-8 text-xs w-36"
+            />
+          </div>
+
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-xs">
+              <X size={12} />
+              Clear
+            </Button>
+          )}
+
+          <span className="ml-auto text-xs text-slate-400">
+            {filtered.length} of {total} shown
+          </span>
         </div>
 
-        {/* Content */}
+        {/* Error */}
         {error && (
-          <div className="bg-red-950 border border-red-800 text-red-300 rounded-lg p-4 mb-6 text-sm">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
 
+        {/* Loading */}
         {loading && (
-          <div className="text-center text-slate-400 py-16 text-sm">
-            Loading predictions…
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-20 w-full" />
+            ))}
           </div>
         )}
 
-        {!loading && !error && filtered.length === 0 && (
-          <div className="text-center text-slate-500 py-16">
-            <p className="text-4xl mb-3">🤖</p>
-            <p className="text-sm">
-              {filter === "all"
-                ? "No predictions yet — run a pipeline to generate them."
-                : `No predictions match the "${filter}" filter.`}
+        {/* Empty */}
+        {!loading && filtered.length === 0 && (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 py-20 text-center">
+            <Sparkles size={40} className="text-slate-300 mb-3" />
+            <p className="text-slate-500 font-medium">
+              {total === 0
+                ? "No predictions yet — run a pipeline first."
+                : "No predictions match the active filters."}
             </p>
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="mt-2 text-sm text-slate-400 underline hover:text-slate-600"
+              >
+                Clear filters
+              </button>
+            )}
           </div>
         )}
 
-        {!loading && !error && filtered.length > 0 && (
-          <div className="space-y-4">
+        {/* List */}
+        {!loading && filtered.length > 0 && (
+          <div className="space-y-3">
             {filtered.map((pred) => (
               <PredictionCard key={pred.prediction_id} pred={pred} />
             ))}
           </div>
         )}
       </div>
-    </div>
+    </AppShell>
   );
 }

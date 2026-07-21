@@ -1,3 +1,17 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  html { -webkit-font-smoothing: antialiased; }
+  body { @apply bg-slate-50 text-slate-900; }
+}
+
+@layer components {
+  /* Source-specific timeline dot colours used in /admin/trace */
+  .dot-upload_jobs         { @apply bg-blue-500; }
+  .dot-workflow_logs       { @apply bg-orange-500; }
+  .dot-fact_predictions    { @apply bg-purple-500; }
+  .dot-fact_recommendations { @apply bg-emerald-500; }
+}

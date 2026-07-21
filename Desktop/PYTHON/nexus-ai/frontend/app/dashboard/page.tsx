@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import AppShell from "@/components/app-shell";
 
 // ─── Dashboard registry (matches backend DASHBOARDS list) ────────────────────
 const SUPERSET_URL =
   process.env.NEXT_PUBLIC_SUPERSET_URL ?? "http://localhost:8088";
 
 interface DashboardMeta {
-  id: string;       // slug used in embed-token request
+  id: string;
   name: string;
   description: string;
   icon: string;
@@ -80,7 +81,6 @@ export default function DashboardPage() {
     []
   );
 
-  // Fetch token when the active tab changes (idle → loading)
   useEffect(() => {
     const dash = DASHBOARDS[activeTab];
     if (states[dash.id] === "idle") {
@@ -89,7 +89,6 @@ export default function DashboardPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
-  // Refresh tokens every 4 minutes (guest tokens expire in 5)
   useEffect(() => {
     const interval = setInterval(() => {
       const dash = DASHBOARDS[activeTab];
@@ -109,14 +108,12 @@ export default function DashboardPage() {
       : null;
 
   return (
-    <main className="flex flex-col h-screen bg-slate-50">
-      {/* ── Header bar ── */}
-      <div className="flex items-center gap-4 px-6 py-3 bg-white border-b border-slate-200 shadow-sm">
-        <h1 className="text-lg font-bold text-slate-800 shrink-0">
-          NEXUS AI — Analytics
-        </h1>
-
-        {/* Tab buttons */}
+    <AppShell
+      breadcrumb={[{ label: "Dashboard" }]}
+      mainClassName="flex flex-1 flex-col overflow-hidden"
+    >
+      {/* Tab strip + actions */}
+      <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-2 shrink-0">
         <div className="flex gap-2 flex-1 overflow-x-auto">
           {DASHBOARDS.map((dash, i) => (
             <button
@@ -136,7 +133,6 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Actions */}
         <div className="flex gap-2 shrink-0">
           <button
             onClick={() => {
@@ -149,18 +145,6 @@ export default function DashboardPage() {
             ↻ Refresh
           </button>
           <a
-            href="/predictions"
-            className="px-3 py-1.5 text-sm rounded-lg bg-slate-700 text-white hover:bg-slate-600 transition-colors"
-          >
-            Predictions
-          </a>
-          <a
-            href="/upload"
-            className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-          >
-            + Upload CSV
-          </a>
-          <a
             href={`${SUPERSET_URL}/superset/dashboard/${activeDash.id}/`}
             target="_blank"
             rel="noreferrer"
@@ -172,7 +156,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Dashboard iframe ── */}
+      {/* Iframe area */}
       <div className="flex-1 relative overflow-hidden">
         {tokenState === "auth" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-slate-500">
@@ -214,7 +198,6 @@ export default function DashboardPage() {
         )}
 
         {iframeSrc && (
-          /* key forces iframe remount so guest_token header is re-sent */
           <iframe
             key={iframeSrc}
             src={iframeSrc}
@@ -225,11 +208,11 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* ── Status strip ── */}
-      <div className="px-6 py-1.5 bg-white border-t border-slate-100 text-xs text-slate-400">
+      {/* Status strip */}
+      <div className="px-6 py-1.5 bg-white border-t border-slate-100 text-xs text-slate-400 shrink-0">
         {activeDash.icon} <strong>{activeDash.name}</strong> — {activeDash.description}
         {tokenData && <span className="ml-2 text-green-600">● Live</span>}
       </div>
-    </main>
+    </AppShell>
   );
 }

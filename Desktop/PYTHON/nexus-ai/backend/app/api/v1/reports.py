@@ -15,7 +15,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -138,6 +138,41 @@ def _generate_pdf(
 
 
 # ─── Routes ───────────────────────────────────────────────────────────────────
+
+@router.get("/", summary="List all generated reports")
+def list_reports(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    total = db.query(Report).count()
+    rows = (
+        db.query(Report, UploadJob)
+        .join(UploadJob, UploadJob.id == Report.job_id, isouter=True)
+        .order_by(Report.generated_at.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+    return {
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "reports": [
+            {
+                "report_id": str(r.report_id),
+                "job_id": str(r.job_id),
+                "filename": j.filename if j else None,
+                "download_url": r.download_url,
+                "generated_at": r.generated_at.isoformat() if r.generated_at else None,
+                "notified_at": r.notified_at.isoformat() if r.notified_at else None,
+                "status": r.status,
+            }
+            for r, j in rows
+        ],
+    }
+
 
 @router.post("/generate/{job_id}", summary="Generate or regenerate the PDF report for a job")
 async def generate_report(
