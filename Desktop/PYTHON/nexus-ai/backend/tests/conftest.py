@@ -14,7 +14,8 @@ import app.models.dim_date      # noqa: F401
 import app.models.dim_product   # noqa: F401
 import app.models.dim_region    # noqa: F401
 import app.models.dim_customer  # noqa: F401
-import app.models.fact_sales    # noqa: F401
+import app.models.fact_sales         # noqa: F401
+import app.models.fact_predictions   # noqa: F401
 
 from app.db.postgres import Base, get_db
 from app.core.limiter import limiter

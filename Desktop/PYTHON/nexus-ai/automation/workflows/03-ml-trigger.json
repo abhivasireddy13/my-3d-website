@@ -1,0 +1,165 @@
+{
+  "name": "03-ML-Trigger",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ml-trigger",
+        "responseMode": "onReceived",
+        "responseData": "allEntries"
+      },
+      "id": "node-ml-webhook",
+      "name": "Webhook: ML Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "ml-trigger-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json;\nconst jobId = body.job_id || null;\nconst recentValues = body.recent_values || [1000, 1200, 1100];\nreturn [{ json: { job_id: jobId, recent_values: recentValues, revenue: body.revenue || 1000, units: body.units || 50 } }];"
+      },
+      "id": "node-ml-extract",
+      "name": "Extract Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://ml-service:8100/train/sales-forecast",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={}"
+      },
+      "id": "node-train-forecast",
+      "name": "Train Sales Forecast",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "url": "http://ml-service:8100/train/anomaly-detection",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={}"
+      },
+      "id": "node-train-anomaly",
+      "name": "Train Anomaly Detection",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "url": "http://ml-service:8100/predict/sales-forecast",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ recent_values: $('Extract Payload').first().json.recent_values, upload_job_id: $('Extract Payload').first().json.job_id }) }}"
+      },
+      "id": "node-predict-forecast",
+      "name": "Predict Sales Forecast",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, 200]
+    },
+    {
+      "parameters": {
+        "url": "http://ml-service:8100/predict/anomaly",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ revenue: $('Extract Payload').first().json.revenue, units: $('Extract Payload').first().json.units, upload_job_id: $('Extract Payload').first().json.job_id }) }}"
+      },
+      "id": "node-predict-anomaly",
+      "name": "Predict Anomaly",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, 400]
+    },
+    {
+      "parameters": {
+        "url": "http://backend:8000/api/v1/internal/pipeline-callback",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "x-internal-secret", "value": "={{ $env.INTERNAL_SECRET || 'nexus-internal' }}" }
+          ]
+        },
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ job_id: $('Extract Payload').first().json.job_id, stage: 'ml-complete', forecast: $('Predict Sales Forecast').first().json.forecast, is_anomaly: $('Predict Anomaly').first().json.is_anomaly, forecast_model_version: $('Predict Sales Forecast').first().json.model_version, anomaly_model_version: $('Predict Anomaly').first().json.model_version }) }}"
+      },
+      "id": "node-callback",
+      "name": "Pipeline Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1160, 300]
+    }
+  ],
+  "connections": {
+    "Webhook: ML Trigger": {
+      "main": [[{ "node": "Extract Payload", "type": "main", "index": 0 }]]
+    },
+    "Extract Payload": {
+      "main": [
+        [
+          { "node": "Train Sales Forecast", "type": "main", "index": 0 },
+          { "node": "Train Anomaly Detection", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Train Sales Forecast": {
+      "main": [[{ "node": "Predict Sales Forecast", "type": "main", "index": 0 }]]
+    },
+    "Train Anomaly Detection": {
+      "main": [[{ "node": "Predict Anomaly", "type": "main", "index": 0 }]]
+    },
+    "Predict Sales Forecast": {
+      "main": [[{ "node": "Pipeline Callback", "type": "main", "index": 0 }]]
+    },
+    "Predict Anomaly": {
+      "main": [[{ "node": "Pipeline Callback", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "03-ml-trigger-v1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "03-ml-trigger",
+  "tags": []
+}
