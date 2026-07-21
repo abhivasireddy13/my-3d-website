@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
     NOTIFICATION_EMAIL: str = ""  # recipient; defaults to SMTP_USER when empty
+    # Anthropic — AI recommendations
+    ANTHROPIC_API_KEY: str = ""
     # Superset — analytics / BI
     SUPERSET_URL: str = "http://localhost:8088"
     SUPERSET_ADMIN_USERNAME: str = "admin"

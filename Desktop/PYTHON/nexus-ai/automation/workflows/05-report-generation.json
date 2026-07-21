@@ -60,7 +60,7 @@
         "method": "POST",
         "sendBody": true,
         "contentType": "json",
-        "body": "={{ JSON.stringify({ job_id: $('Extract Payload').first().json.job_id, status: 'done', stage: 'report-ready', metadata: { report_id: $json.report_id, download_url: $json.download_url, n_predictions: $json.n_predictions } }) }}"
+        "body": "={{ JSON.stringify({ job_id: $('Extract Payload').first().json.job_id, status: 'recommending', stage: 'report-ready', metadata: { report_id: $json.report_id, download_url: $json.download_url, n_predictions: $json.n_predictions } }) }}"
       },
       "id": "node-05-callback",
       "name": "Pipeline Callback",

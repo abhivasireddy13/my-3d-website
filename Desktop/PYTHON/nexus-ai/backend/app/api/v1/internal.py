@@ -10,12 +10,13 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.v1.reports import _generate_pdf
+from app.services.recommendations import generate_recommendations_for_job
 from app.core.config import settings
 from app.db.mongo import pipeline_results, workflow_logs
 from app.db.postgres import get_db
@@ -54,6 +55,7 @@ class NotifyPayload(BaseModel):
 @router.post("/pipeline-callback")
 async def pipeline_callback(
     payload: CallbackPayload,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     x_internal_secret: Optional[str] = Header(None),
 ):
@@ -87,6 +89,14 @@ async def pipeline_callback(
         await workflow_logs.insert_one(audit)
     except Exception:
         pass  # never block the pipeline over a log write
+
+    # Kick off AI recommendation generation in the background when the
+    # report stage has completed and the job is ready for analysis.
+    if payload.status == "recommending":
+        background_tasks.add_task(
+            generate_recommendations_for_job,
+            str(payload.job_id),
+        )
 
     return {"ok": True, "status": payload.status}
 
@@ -184,8 +194,17 @@ async def internal_generate_report(
     job = db.query(UploadJob).filter(UploadJob.id == job_uuid).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    if job.status != "done":
-        raise HTTPException(status_code=409, detail=f"Job status is '{job.status}', not 'done'")
+    # Allow report generation once ML modeling is complete (or already done/recommending).
+    # All earlier pipeline stages (validating, cleaning, processing, etc.) are rejected.
+    _REPORT_ALLOWED_STATUSES = {"modeling", "done", "recommending"}
+    if job.status not in _REPORT_ALLOWED_STATUSES:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Job status is '{job.status}' — report generation is only allowed "
+                f"after ML modeling completes"
+            ),
+        )
 
     # KPIs from fact_sales
     kpi_row = (

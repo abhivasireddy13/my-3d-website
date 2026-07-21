@@ -149,6 +149,12 @@ export default function DashboardPage() {
             ↻ Refresh
           </button>
           <a
+            href="/predictions"
+            className="px-3 py-1.5 text-sm rounded-lg bg-slate-700 text-white hover:bg-slate-600 transition-colors"
+          >
+            Predictions
+          </a>
+          <a
             href="/upload"
             className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
           >

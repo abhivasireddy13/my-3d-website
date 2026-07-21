@@ -16,7 +16,8 @@ import app.models.dim_product   # noqa: F401
 import app.models.dim_region    # noqa: F401
 import app.models.dim_customer  # noqa: F401
 import app.models.fact_sales         # noqa: F401
-import app.models.fact_predictions   # noqa: F401
+import app.models.fact_predictions    # noqa: F401
+import app.models.fact_recommendations  # noqa: F401
 import app.models.report             # noqa: F401
 
 from app.db.postgres import Base, get_db
@@ -95,8 +96,9 @@ def mock_mongo(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def patch_etl_session(monkeypatch):
-    """Make run_etl use the SQLite TestingSession instead of real Postgres."""
+    """Make run_etl and recommendations use the SQLite TestingSession instead of real Postgres."""
     monkeypatch.setattr("app.services.etl.SessionLocal", TestingSession)
+    monkeypatch.setattr("app.services.recommendations.SessionLocal", TestingSession)
 
 
 @pytest.fixture
