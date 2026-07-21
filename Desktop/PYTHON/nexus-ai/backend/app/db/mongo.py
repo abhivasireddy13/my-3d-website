@@ -7,3 +7,4 @@ mongo_db = _client["nexus"]
 raw_uploads = mongo_db["raw_uploads"]
 workflow_logs = mongo_db["workflow_logs"]
 validation_errors = mongo_db["validation_errors"]
+pipeline_results = mongo_db["pipeline_results"]  # ETL stage outputs + recommendations

@@ -1,16 +1,17 @@
-import asyncio
 import uuid
 from pathlib import Path
 
-import httpx
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.db.mongo import raw_uploads
+from app.db.mongo import pipeline_results, raw_uploads
 from app.db.postgres import get_db
 from app.models.upload_job import UploadJob
 from app.services.deps import require_role
+from app.services.etl import run_etl
+
+import asyncio
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 
@@ -21,9 +22,8 @@ _MAX_BYTES = 50 * 1024 * 1024  # 50 MB hard limit
 async def _save_file(job_id: str, filename: str, content: bytes) -> str:
     """Write upload bytes to local storage and return the absolute path.
 
-    TODO: swap the Path.write_bytes call for an S3-compatible put_object
-    (e.g. boto3 / aiobotocore pointing at MinIO or AWS S3) before production.
-    The rest of this function's interface stays the same.
+    TODO: swap Path.write_bytes for an S3-compatible put_object
+    (boto3 / aiobotocore pointing at MinIO or AWS S3) before production.
     """
     dest = Path(settings.STORAGE_DIR) / job_id
     await asyncio.to_thread(dest.mkdir, parents=True, exist_ok=True)
@@ -34,10 +34,12 @@ async def _save_file(job_id: str, filename: str, content: bytes) -> str:
 
 @router.post("/")
 async def create_upload(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     user=Depends(require_role("admin", "analyst")),
 ):
+    """Accept a CSV upload, persist it to disk, and start the ETL pipeline."""
     suffix = Path(file.filename or "").suffix.lower()
     if suffix not in _ALLOWED_EXTENSIONS:
         raise HTTPException(400, "Only CSV files are accepted")
@@ -64,17 +66,13 @@ async def create_upload(
         }
     )
 
+    # Mark validating before returning so the stepper shows the first step.
     job.status = "validating"
     db.commit()
 
-    async with httpx.AsyncClient(timeout=10) as client:
-        try:
-            await client.post(
-                f"{settings.N8N_URL}/webhook/validate-upload",
-                json={"job_id": job_id_str, "filename": file.filename},
-            )
-        except httpx.HTTPError:
-            pass  # n8n unreachable in dev is non-fatal
+    # Kick off the local ETL pipeline as a background task.
+    # The job ID and file path are all it needs; it creates its own DB session.
+    background_tasks.add_task(run_etl, job_id_str, file_path)
 
     return {"job_id": job_id_str, "status": job.status}
 
@@ -86,6 +84,7 @@ def list_uploads(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
 ):
+    """Return a paginated list of upload jobs, newest first."""
     offset = (page - 1) * per_page
     total = db.query(UploadJob).count()
     jobs = (
@@ -117,6 +116,7 @@ def get_status(
     db: Session = Depends(get_db),
     user=Depends(require_role("admin", "analyst", "viewer")),
 ):
+    """Return the current pipeline status for a single job."""
     job = db.query(UploadJob).filter(UploadJob.id == job_id).first()
     if not job:
         raise HTTPException(404, "Job not found")
@@ -125,3 +125,26 @@ def get_status(
         "status": job.status,
         "error_detail": job.error_detail,
     }
+
+
+@router.get("/{job_id}/result")
+async def get_result(
+    job_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user=Depends(require_role("admin", "analyst", "viewer")),
+):
+    """Return the ETL recommendation and statistics for a completed job."""
+    job = db.query(UploadJob).filter(UploadJob.id == job_id).first()
+    if not job:
+        raise HTTPException(404, "Job not found")
+    if job.status != "done":
+        raise HTTPException(
+            409, f"Job not yet complete (status: {job.status})"
+        )
+
+    doc = await pipeline_results.find_one({"job_id": str(job_id)})
+    if not doc:
+        raise HTTPException(404, "Result document not found")
+
+    doc.pop("_id", None)  # MongoDB ObjectId is not JSON-serialisable
+    return doc
