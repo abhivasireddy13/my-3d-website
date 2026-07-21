@@ -1,0 +1,54 @@
+{
+  "name": "01-data-validation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "validate-upload",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook: validate-upload",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Placeholder validation logic.\n// Real implementation: fetch file from job_id, check required columns,\n// nulls, duplicates, and business rules (e.g. no negative prices).\nconst job = items[0].json;\nreturn [{ json: { job_id: job.job_id, status: 'cleaning', passed: true } }];"
+      },
+      "id": "validate-fn",
+      "name": "Validate File",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://backend:8000/internal/pipeline-callback",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "x-internal-secret", "value": "change_me_shared_secret" }]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "job_id", "value": "={{$json.job_id}}" },
+            { "name": "status", "value": "={{$json.status}}" }
+          ]
+        }
+      },
+      "id": "callback",
+      "name": "Callback: pipeline-callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 300]
+    }
+  ],
+  "connections": {
+    "Webhook: validate-upload": { "main": [[{ "node": "Validate File", "type": "main", "index": 0 }]] },
+    "Validate File": { "main": [[{ "node": "Callback: pipeline-callback", "type": "main", "index": 0 }]] }
+  }
+}
