@@ -31,3 +31,11 @@ storage/*
 # Docker / misc
 .DS_Store
 *.log
+
+# MLflow artifacts
+ml-service/mlflow.db
+ml-service/mlruns/
+
+# TypeScript build cache
+tsconfig.tsbuildinfo
+frontend/tsconfig.tsbuildinfo
