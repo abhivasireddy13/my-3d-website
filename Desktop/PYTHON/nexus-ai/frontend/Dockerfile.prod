@@ -1,0 +1,49 @@
+# ── Stage 1: install deps ─────────────────────────────────────────────────────
+FROM node:20-alpine AS deps
+
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+# ── Stage 2: build ────────────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Re-install all deps (including devDependencies needed for the build)
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY . .
+
+# NEXT_PUBLIC_* vars are baked in at build time
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ARG NEXT_PUBLIC_SUPERSET_URL=http://localhost:8088
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_PUBLIC_SUPERSET_URL=${NEXT_PUBLIC_SUPERSET_URL}
+
+RUN npm run build
+
+# ── Stage 3: lean runtime ─────────────────────────────────────────────────────
+FROM node:20-alpine AS runtime
+
+RUN addgroup --gid 1001 appgroup \
+ && adduser  --uid 1001 --ingroup appgroup --disabled-password --no-create-home appuser
+
+WORKDIR /app
+
+# next.config.js output:"standalone" generates a self-contained .next/standalone
+# directory — copy only that + the public/ assets.
+COPY --from=builder --chown=appuser:appgroup /app/.next/standalone ./
+COPY --from=builder --chown=appuser:appgroup /app/.next/static    ./.next/static
+COPY --from=builder --chown=appuser:appgroup /app/public          ./public
+
+USER appuser
+EXPOSE 3000
+
+# BACKEND_URL is read at runtime by Next.js server-side proxy routes
+ENV NODE_ENV=production
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
+
+CMD ["node", "server.js"]

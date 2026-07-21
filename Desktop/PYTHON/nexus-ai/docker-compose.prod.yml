@@ -1,0 +1,309 @@
+version: "3.9"
+
+# ── NEXUS AI — Production Compose ─────────────────────────────────────────────
+#
+# Usage
+# -----
+#   cp .env.example .env.prod   # fill in every value
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+#
+# Public ports  : 80 (HTTP→HTTPS redirect) and 443 (HTTPS) via Caddy.
+# Internal ports: all other services are on the internal "nexus" network only.
+#
+# Required env vars: see .env.example for the full annotated list.
+
+networks:
+  nexus:
+    driver: bridge
+
+volumes:
+  pgdata:
+  mongodata:
+  redisdata:
+  n8ndata:
+  mlflowdata:
+  supersetdata:
+  caddy_data:
+  caddy_config:
+  backupdata:
+  storage:
+
+services:
+
+  # ── Reverse proxy / TLS termination ────────────────────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    networks: [nexus]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"        # HTTP/3 (QUIC)
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      backend:  {condition: service_healthy}
+      frontend: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    networks: [nexus]
+    environment:
+      POSTGRES_USER:     ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB:       ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ── MongoDB ─────────────────────────────────────────────────────────────────
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    networks: [nexus]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    volumes:
+      - mongodata:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ── Redis ───────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks: [nexus]
+    command: >
+      redis-server
+      --maxmemory 128mb
+      --maxmemory-policy allkeys-lru
+      --save 60 1
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 160M
+
+  # ── n8n workflow orchestrator ───────────────────────────────────────────────
+  n8n:
+    image: n8nio/n8n:latest
+    restart: unless-stopped
+    networks: [nexus]
+    environment:
+      N8N_BASIC_AUTH_ACTIVE:   "true"
+      N8N_BASIC_AUTH_USER:     ${N8N_BASIC_AUTH_USER}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD}
+      N8N_HOST:                ${N8N_HOST:-n8n}
+      N8N_PORT:                5678
+      N8N_WEBHOOK_SECRET:      ${N8N_WEBHOOK_SECRET}
+      N8N_SECURE_COOKIE:       "false"
+      WEBHOOK_URL:             ${N8N_WEBHOOK_URL:-http://n8n:5678}
+    volumes:
+      - n8ndata:/home/node/.n8n
+      - ./automation/workflows:/workflows:ro
+    depends_on:
+      postgres: {condition: service_healthy}
+      mongo:    {condition: service_healthy}
+      redis:    {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ── FastAPI backend ─────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    networks: [nexus]
+    env_file: .env.prod
+    environment:
+      DATABASE_URL: >-
+        postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      MONGO_URL: >-
+        mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:27017/?authSource=admin
+      REDIS_URL:        redis://redis:6379/0
+      N8N_URL:          http://n8n:5678
+      ALLOWED_ORIGINS:  ${ALLOWED_ORIGINS:-https://${DOMAIN}}
+      LOG_LEVEL:        ${LOG_LEVEL:-INFO}
+    volumes:
+      - storage:/storage
+    depends_on:
+      postgres: {condition: service_healthy}
+      mongo:    {condition: service_healthy}
+      redis:    {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ── ML service ──────────────────────────────────────────────────────────────
+  ml-service:
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    networks: [nexus]
+    environment:
+      DATABASE_URL: >-
+        postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      MLFLOW_TRACKING_URI:  sqlite:////mlflow/mlflow.db
+      MLFLOW_ARTIFACT_ROOT: /mlflow/mlruns
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - mlflowdata:/mlflow
+    depends_on:
+      postgres: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8100/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ── Next.js frontend ────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        NEXT_PUBLIC_API_URL:       ${NEXT_PUBLIC_API_URL:-https://${DOMAIN}}
+        NEXT_PUBLIC_SUPERSET_URL:  ${NEXT_PUBLIC_SUPERSET_URL:-https://${DOMAIN}/superset}
+    restart: unless-stopped
+    networks: [nexus]
+    environment:
+      BACKEND_URL:     http://backend:8000
+      INTERNAL_SECRET: ${N8N_WEBHOOK_SECRET}
+      NODE_ENV:        production
+    depends_on:
+      backend: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:3000"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # ── Apache Superset ─────────────────────────────────────────────────────────
+  superset:
+    image: apache/superset:4.1.1
+    restart: unless-stopped
+    networks: [nexus]
+    environment:
+      SUPERSET_SECRET_KEY:      ${SUPERSET_SECRET_KEY}
+      SUPERSET_ADMIN_USERNAME:  ${SUPERSET_ADMIN_USERNAME:-admin}
+      SUPERSET_ADMIN_PASSWORD:  ${SUPERSET_ADMIN_PASSWORD}
+      SUPERSET_ADMIN_EMAIL:     ${SUPERSET_ADMIN_EMAIL:-admin@nexus.ai}
+      SUPERSET_CONFIG_PATH:     /app/pythonpath/superset_config.py
+      POSTGRES_HOST:            postgres
+      POSTGRES_USER:            ${POSTGRES_USER}
+      POSTGRES_PASSWORD:        ${POSTGRES_PASSWORD}
+      POSTGRES_DB:              ${POSTGRES_DB}
+      REDIS_HOST:               redis
+      REDIS_PORT:               6379
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis:    {condition: service_healthy}
+    volumes:
+      - ./automation/superset/superset_config.py:/app/pythonpath/superset_config.py:ro
+      - ./automation/superset/setup_dashboards.py:/app/pythonpath/setup_dashboards.py:ro
+      - ./automation/superset/docker-entrypoint.sh:/app/docker-entrypoint.sh:ro
+      - supersetdata:/app/superset_home
+    command: ["/bin/bash", "/app/docker-entrypoint.sh"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
+      interval: 30s
+      timeout: 15s
+      retries: 10
+      start_period: 180s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  # ── Daily backup ────────────────────────────────────────────────────────────
+  backup:
+    build:
+      context: ./backup
+    restart: unless-stopped
+    networks: [nexus]
+    environment:
+      POSTGRES_HOST:     postgres
+      POSTGRES_USER:     ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB:       ${POSTGRES_DB}
+      MONGO_HOST:        mongo
+      MONGO_USER:        ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_PASSWORD:    ${MONGO_INITDB_ROOT_PASSWORD}
+      BACKUP_SCHEDULE:   ${BACKUP_SCHEDULE:-0 2 * * *}
+      RETENTION_DAYS:    ${BACKUP_RETENTION_DAYS:-7}
+    volumes:
+      - backupdata:/backups
+    depends_on:
+      postgres: {condition: service_healthy}
+      mongo:    {condition: service_healthy}
+    deploy:
+      resources:
+        limits:
+          memory: 128M

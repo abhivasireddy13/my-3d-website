@@ -11,6 +11,7 @@ POST /predict/anomaly         — load production model from registry, predict
 """
 
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
@@ -21,14 +22,31 @@ import numpy as np
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
 
 from app.core.config import settings
+from app.core.logging import configure_logging, set_correlation_id
 from app.db.postgres import SessionLocal, get_db
 from app.training import anomaly_detection, sales_forecast
 
+configure_logging(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="NEXUS AI - ML Service", version="1.0.0")
+
+
+class _CorrelationMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next) -> Response:
+        cid = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+        set_correlation_id(cid)
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = cid
+        return response
+
+
+app.add_middleware(_CorrelationMiddleware)
 
 # ─── MLflow helpers ───────────────────────────────────────────────────────────
 
@@ -97,6 +115,14 @@ def _write_prediction(
             },
         )
         db.commit()
+        logger.info(
+            "Wrote fact_prediction",
+            extra={
+                "model_name": model_name,
+                "is_anomaly": is_anomaly,
+                "upload_job_id": upload_job_id,
+            },
+        )
     except Exception as exc:
         db.rollback()
         logger.warning("Could not write to fact_predictions: %s", exc)

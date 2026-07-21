@@ -1,0 +1,68 @@
+# NEXUS AI — Caddy reverse-proxy
+#
+# Environment variables consumed at runtime:
+#   DOMAIN          – public hostname, e.g. nexus.example.com
+#                     Set to "localhost" for local prod testing (HTTP-only).
+#
+# Caddy automatically provisions and renews Let's Encrypt TLS when DOMAIN
+# is a real public hostname reachable on port 80/443.
+# For local testing without a domain, use ":80" as the site address.
+
+{
+    # Structured JSON access logs — consistent with backend/ml-service format
+    log {
+        format json
+    }
+    # Disable the Caddy admin API in production (not needed and reduces attack surface)
+    admin off
+}
+
+{$DOMAIN:localhost} {
+    # ── Security headers ───────────────────────────────────────────────────
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options    "nosniff"
+        X-Frame-Options           "DENY"
+        Referrer-Policy           "strict-origin-when-cross-origin"
+        X-XSS-Protection          "1; mode=block"
+        # Remove Caddy's Server header to avoid fingerprinting
+        -Server
+    }
+
+    # ── Backend API ────────────────────────────────────────────────────────
+    handle /api/* {
+        reverse_proxy backend:8000 {
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP        {remote_host}
+        }
+    }
+
+    # ── Internal pipeline callbacks (n8n → backend) ────────────────────────
+    handle /internal/* {
+        reverse_proxy backend:8000 {
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP        {remote_host}
+        }
+    }
+
+    # ── Superset analytics (accessed from the dashboard iframe) ────────────
+    handle /superset/* {
+        reverse_proxy superset:8088 {
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # ── Frontend — catch-all ───────────────────────────────────────────────
+    handle {
+        reverse_proxy frontend:3000 {
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP        {remote_host}
+        }
+    }
+
+    # ── Structured access log ──────────────────────────────────────────────
+    log {
+        format json
+        output stdout
+    }
+}
